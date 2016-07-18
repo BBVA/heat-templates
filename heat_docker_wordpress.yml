@@ -1,0 +1,147 @@
+heat_template_version: 2013-05-23
+
+description: >
+  This template will create a VM (docker host) and places a docker container
+  inside.
+
+parameters:
+  server_key:
+    type: string
+    description: name of ssh key to be provisioned on our server
+  server_image:
+    type: string
+    default: CoreOS-1068.6.0
+    constraints:
+      - allowed_values: ["CoreOS-1068.6.0"]
+    description: glance image used to boot the server
+  server_flavor:
+    type: string
+    default: m1.small
+    constraints:
+      - allowed_values: ["m1.tiny", "m1.small", "m1.medium"]
+    description: server flavor
+  network_id:
+    type: string
+    description: network id
+  subnet_id:
+    type: string
+    description: subnet id
+  fip_network:
+    type: string
+    default: PUBLIC-ACCESS-POOL-2
+    constraints:
+      - allowed_values: ["PUBLIC-ACCESS-POOL-1", "PUBLIC-ACCESS-POOL-2"]
+    description: pool of floating ip addresses
+
+resources:
+  docker_wait_handle:
+    type: "AWS::CloudFormation::WaitConditionHandle"
+
+  docker_wait_condition:
+    type: "AWS::CloudFormation::WaitCondition"
+    depends_on:
+      - node
+    properties:
+      Handle:
+        get_resource: docker_wait_handle
+      Timeout: "6000"
+
+  node:
+    type: "OS::Nova::Server"
+    properties:
+      image: { get_param: server_image }
+      flavor: { get_param: server_flavor }
+      key_name: {get_param: server_key }
+      networks:
+        - port: { get_resource: node_eth0 }
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/sh
+            curl -sf -X PUT -H 'Content-Type: application/json' \
+                 --data-binary '{"Status": "SUCCESS", "Reason": "Setup complete", "Data": "OK", "UniqueId": "00000"}' \
+                 "$WAIT_HANDLE"
+          params:
+            "$WAIT_HANDLE":
+               get_resource: docker_wait_handle
+
+  node_eth0:
+    type: "OS::Neutron::Port"
+    properties:
+      security_groups:
+        - magnum
+      network_id: { get_param: network_id }
+      fixed_ips:
+        - subnet: { get_param: subnet_id }
+
+  floating_ip:
+    type: "OS::Neutron::FloatingIP"
+    properties:
+       floating_network: { get_param: fip_network }
+       port_id: { get_resource: node_eth0 }
+
+  wordpress:
+    depends_on:
+      - mysql
+    type: "DockerInc::Docker::Container"
+    properties:
+      name: wordpress
+      image: "wordpress:latest"
+      port_specs:
+        - 80
+      links:
+        'mysql': 'mysql'
+      docker_endpoint:
+        str_replace:
+          template: "tcp://$HOST:2375"
+          params:
+            "$HOST": { get_attr: [ floating_ip, floating_ip_address ] }
+      port_bindings:
+        80: 8080
+
+  mysql:
+    type: "DockerInc::Docker::Container"
+    depends_on:
+      - docker_wait_condition
+    properties:
+      name: mysql
+      docker_endpoint:
+        str_replace:
+          template: "tcp://$HOST:2375"
+          params:
+            "$HOST": { get_attr: [ floating_ip, floating_ip_address ] }
+      image: "mariadb:latest"
+      env:
+         - MYSQL_ROOT_PASSWORD=1234
+      port_specs:
+        - 3306
+
+outputs:
+  docker_info:
+    description: Container Information
+    value: { get_attr: [ wordpress , info ] }
+  docker_logs:
+    description: Container Logs
+    value: { get_attr: [ wordpress, logs ] }
+  docker_logs_head:
+    description: Container Logs_Head
+    value: { get_attr: [ wordpress, logs_head ] }
+  docker_logs_tail:
+    description: Container Logs_Tail
+    value: { get_attr: [ wordpress, logs_tail ] }
+  docker_net_info:
+    description: Container Network Info
+    value: { get_attr: [ wordpress, network_info ] }
+  docker_net_ip:
+    description: Container Network IP
+    value: { get_attr: [ wordpress, network_ip ] }
+  docker_net_gateway:
+    description: Container Network Gateway
+    value: { get_attr: [ wordpress, network_gateway ] }
+  docker_net_tcp_ports:
+    description: Container Network TCP ports
+    value: { get_attr: [ wordpress, network_tcp_ports ] }
+  docker_net_udp_ports:
+    description: Container Network UDP ports
+    value: { get_attr: [ wordpress, network_udp_ports ] }
