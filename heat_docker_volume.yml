@@ -1,0 +1,180 @@
+heat_template_version: 2013-05-23
+
+description: >
+  This template will create a VM (docker host) and places a docker container
+  inside.
+
+parameters:
+  server_key:
+    type: string
+    description: name of ssh key to be provisioned on our server
+  server_image:
+    type: string
+    default: CoreOS-1068.6.0
+    constraints:
+      - allowed_values: ["CoreOS-1068.6.0"]
+    description: glance image used to boot the server
+  server_flavor:
+    type: string
+    default: m1.small
+    constraints:
+      - allowed_values: ["m1.tiny", "m1.small", "m1.medium"]
+    description: server flavor
+  network_id:
+    type: string
+    description: network id
+  subnet_id:
+    type: string
+    description: subnet id
+  fip_network:
+    type: string
+    default: PUBLIC-ACCESS-POOL-2
+    constraints:
+      - allowed_values: ["PUBLIC-ACCESS-POOL-1", "PUBLIC-ACCESS-POOL-2"]
+    description: pool of floating ip addresses
+
+resources:
+  docker_wait_handle:
+    type: "AWS::CloudFormation::WaitConditionHandle"
+
+  docker_wait_condition:
+    type: "AWS::CloudFormation::WaitCondition"
+    depends_on:
+      - node
+    properties:
+      Handle:
+        get_resource: docker_wait_handle
+      Timeout: "6000"
+
+  node:
+    type: "OS::Nova::Server"
+    depends_on:
+      - cinder_volume
+    properties:
+      image: { get_param: server_image }
+      flavor: { get_param: server_flavor }
+      key_name: {get_param: server_key }
+      networks:
+        - port: { get_resource: node_eth0 }
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/sh
+            cat > /etc/systemd/system/format-ephemeral.service <<EOF
+            [Unit]
+            Description=Formats the ephemeral drive
+            After=dev-vdb.device
+            Requires=dev-vdb.device
+            [Service]
+            Type=oneshot
+            RemainAfterExit=yes
+            ExecStart=/usr/sbin/wipefs -f /dev/vdb
+            ExecStart=/usr/sbin/mkfs.ext4 -F /dev/vdb
+            EOF
+            cat > /etc/systemd/system/var-lib-docker.mount <<EOF
+            [Unit]
+            Description=Mount ephemeral to /var/lib/docker
+            Requires=format-ephemeral.service
+            After=format-ephemeral.service
+            [Mount]
+            What=/dev/vdb
+            Where=/var/lib/docker
+            Type=ext4
+            EOF
+            mkdir /etc/systemd/system/docker.service.d
+            cat > /etc/systemd/system/docker.service.d/10-wait-docker.conf <<EOF
+            [Unit]
+            After=var-lib-docker.mount
+            Requires=var-lib-docker.mount
+            EOF
+            for service in format-ephemeral.service var-lib-docker.mount; do
+              systemctl enable $service
+              systemctl start $service
+            done
+            systemctl daemon-reload
+            systemctl restart docker.service
+            curl -sf -X PUT -H 'Content-Type: application/json' \
+                --data-binary '{"Status": "SUCCESS", "Reason": "Setup complete", "Data": "OK", "UniqueId": "00000"}' \
+                "$WAIT_HANDLE"
+          params:
+            "$WAIT_HANDLE":
+               get_resource: docker_wait_handle
+
+  node_eth0:
+    type: "OS::Neutron::Port"
+    properties:
+      security_groups:
+        - magnum
+      network_id: { get_param: network_id }
+      fixed_ips:
+        - subnet: { get_param: subnet_id }
+
+  floating_ip:
+    type: "OS::Neutron::FloatingIP"
+    properties:
+       floating_network: { get_param: fip_network }
+       port_id: { get_resource: node_eth0 }
+
+  mycontainer:
+    depends_on:
+      - docker_wait_condition
+    type: "DockerInc::Docker::Container"
+    properties:
+      image: "nginx:latest"
+      volumes:
+        /var/nginx/conf:
+          bind: '/usr/share/nginx/conf'
+          mode: 'rw'
+      #volumes_from:
+      #  - data-container
+      port_specs:
+        - 80
+      port_bindings:
+        80: 80
+      docker_endpoint:
+        str_replace:
+          template: "tcp://$HOST:2375"
+          params:
+            "$HOST": { get_attr: [ floating_ip, floating_ip_address ] }
+
+  cinder_volume:
+      type: OS::Cinder::Volume
+      properties:
+        size: 20
+
+  docker_volume_attach:
+      type: "OS::Cinder::VolumeAttachment"
+      properties:
+        instance_uuid: {get_resource: node}
+        volume_id: {get_resource: cinder_volume}
+        mountpoint: /dev/vdb
+
+outputs:
+  docker_info:
+    description: Container Information
+    value: { get_attr: [ mycontainer, info ] }
+  docker_logs:
+    description: Container Logs
+    value: { get_attr: [ mycontainer, logs ] }
+  docker_logs_head:
+    description: Container Logs_Head
+    value: { get_attr: [ mycontainer, logs_head ] }
+  docker_logs_tail:
+    description: Container Logs_Tail
+    value: { get_attr: [ mycontainer, logs_tail ] }
+  docker_net_info:
+    description: Container Network Info
+    value: { get_attr: [ mycontainer, network_info ] }
+  docker_net_ip:
+    description: Container Network IP
+    value: { get_attr: [ mycontainer, network_ip ] }
+  docker_net_gateway:
+    description: Container Network Gateway
+    value: { get_attr: [ mycontainer, network_gateway ] }
+  docker_net_tcp_ports:
+    description: Container Network TCP ports
+    value: { get_attr: [ mycontainer, network_tcp_ports ] }
+  docker_net_udp_ports:
+    description: Container Network UDP ports
+    value: { get_attr: [ mycontainer, network_udp_ports ] }
