@@ -46,6 +46,16 @@ resources:
         get_resource: docker_wait_handle
       Timeout: "6000"
 
+  cloud_config:
+    type: "OS::Heat::SoftwareConfig"
+    properties:
+      group: ungrouped
+      config:
+        str_replace:
+          template: {get_file: coreos-cloud-config.yml}
+          params:
+            "$WAIT_HANDLE": {get_resource: docker_wait_handle}
+
   node:
     type: "OS::Nova::Server"
     depends_on:
@@ -57,49 +67,7 @@ resources:
       networks:
         - port: { get_resource: node_eth0 }
       user_data_format: RAW
-      user_data:
-        str_replace:
-          template: |
-            #!/bin/sh
-            cat > /etc/systemd/system/format-ephemeral.service <<EOF
-            [Unit]
-            Description=Formats the ephemeral drive
-            After=dev-vdb.device
-            Requires=dev-vdb.device
-            [Service]
-            Type=oneshot
-            RemainAfterExit=yes
-            ExecStart=/usr/sbin/wipefs -f /dev/vdb
-            ExecStart=/usr/sbin/mkfs.ext4 -F /dev/vdb
-            EOF
-            cat > /etc/systemd/system/var-lib-docker.mount <<EOF
-            [Unit]
-            Description=Mount ephemeral to /var/lib/docker
-            Requires=format-ephemeral.service
-            After=format-ephemeral.service
-            [Mount]
-            What=/dev/vdb
-            Where=/var/lib/docker
-            Type=ext4
-            EOF
-            mkdir /etc/systemd/system/docker.service.d
-            cat > /etc/systemd/system/docker.service.d/10-wait-docker.conf <<EOF
-            [Unit]
-            After=var-lib-docker.mount
-            Requires=var-lib-docker.mount
-            EOF
-            for service in format-ephemeral.service var-lib-docker.mount; do
-              systemctl enable $service
-              systemctl start $service
-            done
-            systemctl daemon-reload
-            systemctl restart docker.service
-            curl -sf -X PUT -H 'Content-Type: application/json' \
-                --data-binary '{"Status": "SUCCESS", "Reason": "Setup complete", "Data": "OK", "UniqueId": "00000"}' \
-                "$WAIT_HANDLE"
-          params:
-            "$WAIT_HANDLE":
-               get_resource: docker_wait_handle
+      user_data: {get_resource: cloud_config}
 
   node_eth0:
     type: "OS::Neutron::Port"
@@ -116,18 +84,16 @@ resources:
        floating_network: { get_param: fip_network }
        port_id: { get_resource: node_eth0 }
 
-  mycontainer:
+  cloud9:
     depends_on:
       - docker_wait_condition
     type: "DockerInc::Docker::Container"
     properties:
-      image: "nginx:latest"
+      image: "kdelfour/cloud9-docker:latest"
       volumes:
-        /var/nginx/conf:
-          bind: '/usr/share/nginx/conf'
+        /var/lib/docker/workspace:
+          bind: '/usr/share/workspace'
           mode: 'rw'
-      #volumes_from:
-      #  - data-container
       port_specs:
         - 80
       port_bindings:
@@ -153,28 +119,28 @@ resources:
 outputs:
   docker_info:
     description: Container Information
-    value: { get_attr: [ mycontainer, info ] }
+    value: { get_attr: [ cloud9, info ] }
   docker_logs:
     description: Container Logs
-    value: { get_attr: [ mycontainer, logs ] }
+    value: { get_attr: [ cloud9, logs ] }
   docker_logs_head:
     description: Container Logs_Head
-    value: { get_attr: [ mycontainer, logs_head ] }
+    value: { get_attr: [ cloud9, logs_head ] }
   docker_logs_tail:
     description: Container Logs_Tail
-    value: { get_attr: [ mycontainer, logs_tail ] }
+    value: { get_attr: [ cloud9, logs_tail ] }
   docker_net_info:
     description: Container Network Info
-    value: { get_attr: [ mycontainer, network_info ] }
+    value: { get_attr: [ cloud9, network_info ] }
   docker_net_ip:
     description: Container Network IP
-    value: { get_attr: [ mycontainer, network_ip ] }
+    value: { get_attr: [ cloud9, network_ip ] }
   docker_net_gateway:
     description: Container Network Gateway
-    value: { get_attr: [ mycontainer, network_gateway ] }
+    value: { get_attr: [ cloud9, network_gateway ] }
   docker_net_tcp_ports:
     description: Container Network TCP ports
-    value: { get_attr: [ mycontainer, network_tcp_ports ] }
+    value: { get_attr: [ cloud9, network_tcp_ports ] }
   docker_net_udp_ports:
     description: Container Network UDP ports
-    value: { get_attr: [ mycontainer, network_udp_ports ] }
+    value: { get_attr: [ cloud9, network_udp_ports ] }
