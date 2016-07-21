@@ -52,7 +52,7 @@ resources:
       group: ungrouped
       config:
         str_replace:
-          template: {get_file: coreos-cloud-config.yml}
+          template: {get_file: files/cloud_config.yml}
           params:
             "$WAIT_HANDLE": {get_resource: docker_wait_handle}
 
