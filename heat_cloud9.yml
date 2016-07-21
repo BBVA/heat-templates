@@ -52,7 +52,7 @@ resources:
       group: ungrouped
       config:
         str_replace:
-          template: {get_file: files/cloud_config.yml}
+          template: {get_file: files/cloud_volume_config.yml}
           params:
             "$WAIT_HANDLE": {get_resource: docker_wait_handle}
 

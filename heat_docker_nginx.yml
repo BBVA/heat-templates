@@ -55,11 +55,7 @@ resources:
       user_data_format: RAW
       user_data:
         str_replace:
-          template: |
-            #!/bin/sh
-            curl -sf -X PUT -H 'Content-Type: application/json' \
-                --data-binary '{"Status": "SUCCESS", "Reason": "Setup complete", "Data": "OK", "UniqueId": "00000"}' \
-                "$WAIT_HANDLE"
+          template: { get_file: files/cloud_cfn_config.yml }
           params:
             "$WAIT_HANDLE":
                get_resource: docker_wait_handle
@@ -70,7 +66,6 @@ resources:
       security_groups:
         - magnum
       network_id: { get_param: network_id }
-#0d6069fd-6486-4adb-89e8-3ffd513f3b46
       fixed_ips:
         - subnet: { get_param: subnet_id }
 
