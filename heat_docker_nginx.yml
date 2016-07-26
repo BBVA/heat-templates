@@ -55,7 +55,18 @@ resources:
       user_data_format: RAW
       user_data:
         str_replace:
-          template: { get_file: files/cloud_cfn_config.yml }
+          template: | 
+            #cloud-config
+            coreos:
+              units:
+                - name: cfn-signal.service
+                  runtime: true
+                  command: start
+                  content: |
+                    [Service]
+                    ExecStart=/usr/bin/curl -sf -X PUT -H 'Content-Type: application/json' \
+                          --data-binary '{"Status": "SUCCESS", "Reason": "Setup complete", "Data": "OK", "UniqueId": "00000"}' \
+                          "$WAIT_HANDLE"
           params:
             "$WAIT_HANDLE":
                get_resource: docker_wait_handle
