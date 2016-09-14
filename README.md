@@ -1,9 +1,9 @@
-# HEAT DOCKER TEMPLATES
+# HEAT TEMPLATES :: INNOCLOUD BBVA
 
-Docker containers and VMs by just one stack definition 
+This project contains some examples of heat templates which could work fine in our OpenStack environment.
 
-![alt text](assets/stack_topology.png "Heat stack with docker resource")
+
 
 ## Requirements
 
-This templates require the heat contrib extension for docker containers
+Please contact support team in order to get the needed roles for user accounts in your tenants.
