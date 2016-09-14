@@ -1,0 +1,156 @@
+heat_template_version: 2014-10-16
+
+description: >
+A simple auto scaling group .
+
+parameters:
+
+  image:
+    type: string
+    description: Name or ID of the image registered with Glance
+    constraints:
+      - custom_constraint: glance.image
+
+  keypair:
+    type: string
+    description: Name of the SSH keypair registered with Nova
+    constraints:
+    - custom_constraint: nova.keypair
+
+  flavor:
+    type: string
+    description: The flavor to use for the vm instances
+    default: m1.tiny
+    constraints:
+    - custom_constraint: nova.flavor
+
+  network:
+    type: string
+    description: >
+      The network that instance is attached to.
+    constraints:
+    - custom_constraint: neutron.network
+
+  cooldown:
+    type: number
+    description: >
+      Cooldown, freeze time between checks in seconds.
+    default: 60
+
+  max_size:
+    type: number
+    description: >
+      Number of max vm instances to create.
+    default: 3
+
+  min_size:
+    type: number
+    description: >
+      Number of min vm instances to create.
+    default: 1
+
+  desired_capacity:
+    type: number
+    description: >
+      Desired capacity of vm instances in the scaling group.
+    default: 1
+
+  high_periods:
+    type: number
+    description: >
+      Number of periods to evaluate the high level alarm.
+    default: 1
+
+  low_periods:
+    type: number
+    description: >
+      Number of periods to evaluate the low level alarm.
+    default: 1
+
+  high_threshold:
+    type: number
+    description: >
+      Thresohold for high level alarm.
+    default: 20
+ 
+  low_threshold:
+    type: number
+    description: >
+      Thresohold for low level alarm.
+    default: 10
+
+  high_period_time:
+    type: number
+    description: >
+      Number of second in a period for high level alarms.
+    default: 60
+
+  low_period_time:
+    type: number
+    description: >
+      Number of second in a period for low level alarms.
+    default: 60
+
+resources:
+  group:
+    type: OS::Heat::AutoScalingGroup
+    properties:
+      cooldown: {get_param: cooldown }
+      desired_capacity: { get_param: desired_capacity }
+      max_size: { get_param: max_size }
+      min_size: { get_param: min_size }
+      resource:
+        type: OS::Nova::Server
+        properties:
+          image: { get_param: image }
+          flavor: { get_param: flavor }
+          key_name: { get_param: keypair }
+          networks:
+            - network: {get_param: network}
+          metadata: {"metering.stack": {get_param: "OS::stack_id"}}
+          #user_data_format: RAW
+          #user_data: |
+             #!/bin/sh
+             #while [ 1 ] ; do echo $((13**99)) 1>/dev/null 2>&1; done
+
+  scale_down_policy:
+    type: OS::Heat::ScalingPolicy
+    properties:
+      adjustment_type: change_in_capacity
+      auto_scaling_group_id: {get_resource: group}
+      cooldown: { get_param: cooldown }
+      scaling_adjustment: '-1'
+
+  scale_up_policy:
+    type: OS::Heat::ScalingPolicy
+    properties:
+      adjustment_type: change_in_capacity
+      auto_scaling_group_id: { get_resource: group }
+      cooldown: { get_param: cooldown }
+      scaling_adjustment: 1
+
+  cpu_alarm_high:
+    type: OS::Ceilometer::Alarm
+    properties:
+      meter_name: cpu_util
+      statistic: avg
+      period: { get_param: high_period_time }
+      evaluation_periods: { get_param: high_periods}
+      threshold: { get_param: high_threshold }
+      alarm_actions:
+        - {get_attr: [scale_up_policy, alarm_url]}
+      matching_metadata: {'metadata.user_metadata.stack': {get_param: "OS::stack_id"}}
+      comparison_operator: gt
+
+  cpu_alarm_low:
+    type: OS::Ceilometer::Alarm
+    properties:
+      meter_name: cpu_util
+      statistic: avg
+      period: { get_param: low_period_time }
+      evaluation_periods: { get_param: low_periods }
+      threshold: { get_param: low_threshold }
+      alarm_actions:
+        - {get_attr: [scale_down_policy, alarm_url]}
+      matching_metadata: {'metadata.user_metadata.stack': {get_param: "OS::stack_id"}}
+      comparison_operator: lt
