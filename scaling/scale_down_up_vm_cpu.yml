@@ -1,28 +1,33 @@
 heat_template_version: 2014-10-16
 
 description: >
-A simple auto scaling group .
+  A simple auto scaling group.
 
 parameters:
 
   image:
     type: string
-    description: Name or ID of the image registered with Glance
+    description: >
+      Name or ID of the image registered with Glance
+    default: cirros
     constraints:
       - custom_constraint: glance.image
 
   keypair:
     type: string
-    description: Name of the SSH keypair registered with Nova
+    description: >
+      Name of the SSH keypair registered with Nova
     constraints:
     - custom_constraint: nova.keypair
 
   flavor:
     type: string
-    description: The flavor to use for the vm instances
+    description: >
+      The flavor to use for the vm instances
     default: m1.tiny
     constraints:
-    - custom_constraint: nova.flavor
+      - allowed_values: ["m1.tiny", "m1.small", "m1.medium"]
+      - custom_constraint: nova.flavor
 
   network:
     type: string
@@ -37,6 +42,12 @@ parameters:
       Cooldown, freeze time between checks in seconds.
     default: 60
 
+  desired_capacity:
+    type: number
+    description: >
+      Desired initial number of resources.
+    default: 2
+
   max_size:
     type: number
     description: >
@@ -47,12 +58,6 @@ parameters:
     type: number
     description: >
       Number of min vm instances to create.
-    default: 1
-
-  desired_capacity:
-    type: number
-    description: >
-      Desired capacity of vm instances in the scaling group.
     default: 1
 
   high_periods:
@@ -95,7 +100,7 @@ resources:
   group:
     type: OS::Heat::AutoScalingGroup
     properties:
-      cooldown: {get_param: cooldown }
+      cooldown: { get_param: cooldown }
       desired_capacity: { get_param: desired_capacity }
       max_size: { get_param: max_size }
       min_size: { get_param: min_size }
@@ -106,8 +111,8 @@ resources:
           flavor: { get_param: flavor }
           key_name: { get_param: keypair }
           networks:
-            - network: {get_param: network}
-          metadata: {"metering.stack": {get_param: "OS::stack_id"}}
+            - network: { get_param: network }
+          metadata: { "metering.stack": { get_param: "OS::stack_id" } }
           #user_data_format: RAW
           #user_data: |
              #!/bin/sh
@@ -117,7 +122,7 @@ resources:
     type: OS::Heat::ScalingPolicy
     properties:
       adjustment_type: change_in_capacity
-      auto_scaling_group_id: {get_resource: group}
+      auto_scaling_group_id: { get_resource: group }
       cooldown: { get_param: cooldown }
       scaling_adjustment: '-1'
 
@@ -135,10 +140,10 @@ resources:
       meter_name: cpu_util
       statistic: avg
       period: { get_param: high_period_time }
-      evaluation_periods: { get_param: high_periods}
+      evaluation_periods: { get_param: high_periods }
       threshold: { get_param: high_threshold }
       alarm_actions:
-        - {get_attr: [scale_up_policy, alarm_url]}
+        - { get_attr: [scale_up_policy, alarm_url] }
       matching_metadata: {'metadata.user_metadata.stack': {get_param: "OS::stack_id"}}
       comparison_operator: gt
 
@@ -151,6 +156,13 @@ resources:
       evaluation_periods: { get_param: low_periods }
       threshold: { get_param: low_threshold }
       alarm_actions:
-        - {get_attr: [scale_down_policy, alarm_url]}
+        - { get_attr: [scale_down_policy, alarm_url] }
       matching_metadata: {'metadata.user_metadata.stack': {get_param: "OS::stack_id"}}
       comparison_operator: lt
+
+outputs:
+
+  current_size:
+    description: >
+      The current size of the scaling group.
+    value: { get_attr: [group, current_size] }
