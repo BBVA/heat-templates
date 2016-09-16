@@ -75,13 +75,13 @@ parameters:
   high_threshold:
     type: number
     description: >
-      Thresohold for high level alarm.
+      Threshold for high level alarm.
     default: 20
  
   low_threshold:
     type: number
     description: >
-      Thresohold for low level alarm.
+      Threshold for low level alarm.
     default: 10
 
   high_period_time:
