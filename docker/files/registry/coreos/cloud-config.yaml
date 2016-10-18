@@ -96,7 +96,7 @@ coreos:
         ExecStartPre=-/usr/bin/docker rm registry
         ExecStartPre=/usr/bin/docker pull registry:2.5
 
-        ExecStart=/usr/bin/docker run -d -p 5000:5000 -v /var/lib/docker/registry:/var/lib/registry -v /home/root/registry_certs:/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=inmemory--restart=always --name registry registry:2.5
+        ExecStart=/usr/bin/docker run -d -p 5000:5000 -v /var/lib/docker/registry:/var/lib/registry -v /home/root/registry_certs:/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=inmemory --restart=always --name registry registry:2.5
         ExecStop=/usr/bin/docker rm -f registry
 
         [Install]
