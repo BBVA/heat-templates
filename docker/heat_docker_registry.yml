@@ -26,28 +26,22 @@ parameters:
     default: "CoreOS-1068.6.0"
     description: Glance image used to boot the server
     constraints:
-      - allowed_values: ["CoreOS-1068.6.0"]
-      - custom_constraint: glance.image
+    - allowed_values: ["CoreOS-1068.6.0"]
+    - custom_constraint: glance.image
 
   server_flavor:
     type: string
     default: m1.medium
     description: Server flavor
     constraints:
-      - custom_constraint: nova.flavor
-
-  network_id:
-    type: string
-    description: The network id
-    constraints:
-    - custom_constraint: neutron.network
+    - custom_constraint: nova.flavor
 
   fip_network:
     type: string
     default: PUBLIC-ACCESS-POOL-2
     constraints:
-      - allowed_values: ["PUBLIC-ACCESS-POOL-1", "PUBLIC-ACCESS-POOL-2"]
-      - custom_constraint: neutron.network
+    - allowed_values: ["PUBLIC-ACCESS-POOL-1", "PUBLIC-ACCESS-POOL-2"]
+    - custom_constraint: neutron.network
     description: Pool of floating ip addresses
 
   volume_size:
@@ -63,32 +57,19 @@ resources:
   wait_condition:
     type: OS::Heat::WaitCondition
     properties:
-      handle: {get_resource: wait_handle}
+      handle: { get_resource: wait_handle }
       timeout: 10000
 
-  cloud_config_init:
-    type: "OS::Heat::SoftwareConfig"
-    properties:
-      group: ungrouped
-      config:
-        str_replace:
-          template: {get_file: files/docker_registry_config.yml}
-          params:
-            "$WAIT_HANDLE": {get_resource: docker_wait_handle}
-
   server:
-    type: "OS::Nova::Server"
+    type: OS::Nova::Server
     depends_on:
-      - volume
+    - volume
     properties:
       image: { get_param: server_image }
       flavor: { get_param: server_flavor }
       key_name: {get_param: server_key }
-      networks:
-        - network_id: { get_param: network_id }
       user_data_format: SOFTWARE_CONFIG
 
-  # Compose configuration data into a single structure
   software_config:
     type: OS::Heat::SoftwareConfig
     properties:
@@ -99,9 +80,9 @@ resources:
       - name: wc_notify
       outputs:
       - name: result
-      config: {get_file: files/registry/coreos/cloud-config.yaml}
+      config: { get_file: files/registry/coreos/cloud-config.yaml }
 
-   software_deployment:
+  software_deployment:
     type: OS::Heat::SoftwareDeployment
     properties:
       config:
@@ -110,33 +91,34 @@ resources:
         get_resource: server
       input_values:
         hostname: { get_param: hostname }
-        mtu: { get_param_ mtu }
+        mtu: { get_param: docker_mtu }
         wc_notify: { get_attr: ['wait_handle', 'curl_cli'] }
 
   floating_ip:
-    type: "OS::Neutron::FloatingIP"
+    type: OS::Neutron::FloatingIP
     properties:
        floating_network: { get_param: fip_network }
 
   floating_ip_association:
-    type: "OS::Nova::FloatingIPAssociation"
+    type: OS::Nova::FloatingIPAssociation
     properties:
       floating_ip: { get_resource: floating_ip }
       server_id: { get_resource: server }
 
   volume:
-      type: OS::Cinder::Volume
-      properties:
-        size: { get_param: volume_size }
+    type: OS::Cinder::Volume
+    properties:
+      size: { get_param: volume_size }
 
   volume_attach:
-      type: "OS::Cinder::VolumeAttachment"
-      properties:
-        instance_uuid: {get_resource: server}
-        volume_id: {get_resource: volume}
-        mountpoint: /dev/vdb
+    type: "OS::Cinder::VolumeAttachment"
+    properties:
+      instance_uuid: { get_resource: server }
+      volume_id: { get_resource: volume }
+      mountpoint: /dev/vdb
 
 outputs:
+
   deployment_result:
     value:
       get_attr: [software_deployment, result]
