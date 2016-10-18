@@ -68,31 +68,20 @@ resources:
       image: { get_param: server_image }
       flavor: { get_param: server_flavor }
       key_name: {get_param: server_key }
-      user_data_format: SOFTWARE_CONFIG
+      user_data_format: RAW
+      user_data: { get_resource: cloud_config_init}
 
-  software_config:
+  cloud_config_init:
     type: OS::Heat::SoftwareConfig
     properties:
-      group: script
-      inputs:
-      - name: hostname
-      - name: mtu
-      - name: wc_notify
-      outputs:
-      - name: result
-      config: { get_file: files/registry/coreos/cloud-config.yaml }
-
-  software_deployment:
-    type: OS::Heat::SoftwareDeployment
-    properties:
+      group: ungrouped
       config:
-        get_resource: software_config
-      server:
-        get_resource: server
-      input_values:
-        hostname: { get_param: hostname }
-        mtu: { get_param: docker_mtu }
-        wc_notify: { get_attr: ['wait_handle', 'curl_cli'] }
+        str_replace:
+          template: { get_file: files/registry/coreos/cloud-config.yaml }
+          params:
+            "$hostname$": { get_param: hostname }
+            "$mtu$": { get_param: docker_mtu }
+            "$wc_notify$": { get_attr: ['wait_handle', 'curl_cli'] }
 
   floating_ip:
     type: OS::Neutron::FloatingIP
