@@ -6,97 +6,39 @@ write_files:
     owner: "root"
     content: |
       -----BEGIN CERTIFICATE-----
-      MIIGDTCCA/WgAwIBAgIJAIHi7lL9bTzfMA0GCSqGSIb3DQEBCwUAMIGcMQswCQYD
-      VQQGEwJFUzEPMA0GA1UECAwGTUFEUklEMQ8wDQYDVQQHDAZNQURSSUQxDTALBgNV
-      BAoMBEJCVkExETAPBgNVBAsMCElOTk9URUNIMRswGQYDVQQDDBJyZWdpc3RyeS5l
-      dXJvY2xvdWQxLDAqBgkqhkiG9w0BCQEWHWV1cm9jbG91ZC1zdXBwb3J0LmVzQGJi
-      dmEuY29tMB4XDTE2MDgxNjA5MTM0NloXDTE3MDgxNjA5MTM0NlowgZwxCzAJBgNV
-      BAYTAkVTMQ8wDQYDVQQIDAZNQURSSUQxDzANBgNVBAcMBk1BRFJJRDENMAsGA1UE
-      CgwEQkJWQTERMA8GA1UECwwISU5OT1RFQ0gxGzAZBgNVBAMMEnJlZ2lzdHJ5LmV1
-      cm9jbG91ZDEsMCoGCSqGSIb3DQEJARYdZXVyb2Nsb3VkLXN1cHBvcnQuZXNAYmJ2
-      YS5jb20wggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQDG70yFGAw6cV/a
-      Odufum1z00H+jK1sC6H1WMwflDXFtyxZD+0/BjFVBolaSecDxF8xkDtnxsJGnziL
-      8Mm0aqGmuCDi9AXWAt8m+egQ47EOr9d/ns3ak05R4jJb/PkPj/Oz4Cxk6v86vp1H
-      nUMKOI8ZcSXpuVbAs2pvedSBTwwh5Y6P9sHZEQowb/bfKkzNT5PzkYyhH2iUUXRc
-      kMhQjBB91eSRS0iNdMsEWkygx4aolPCPJDrPgj0bnAO6WW8UwCE/gKvUjg2KSCVi
-      F1MowODPMIy3hp7hIfGh4Or5oD0jFLoCYS5Fwz+a0N6gHGJ7kyVWnOlGGpRKPaHm
-      xk5hmAcCjJCaekjzgBT5Hylkgw4hfzV4LOjHd5zIil9+M3Vn3wIpiplheFx9pb3P
-      WZlPTXgEQ0szalQJo+fUcGrtWye1jb1cMD99VmTOQ3MfP4bPPXZ5isQtsCW7DlPF
-      Y0s7eGt1qWpypSf43C0zq7EUbd944/XUG98Zx4bUindf29TMm95FYRPcSb6POFPT
-      HTt/3v9YuvKWsEk9AbkWBMPqc2uIlxxyOVicqZ2TrotHzSUDb9FrfyNseTni9vys
-      kZoqhnk/QZog7qoJ5T4XfpuHzDvjo+REEjtzH9A11mT2IhxDPgZOU38s1cRgOW2u
-      BWLDFD1d0MsR/cpZecCzz1menvOJ9wIDAQABo1AwTjAdBgNVHQ4EFgQUqe+EzscP
-      r6Gv9K7Yx2GKMf3rD+YwHwYDVR0jBBgwFoAUqe+EzscPr6Gv9K7Yx2GKMf3rD+Yw
-      DAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAgEAUZSPropZVKBaazdtlD7w
-      sAspBldxJuNCNcJyimxH7vsL3XCqQu+8yKXy2fW0ocecI/G9faGu+7lkkPBykPI/
-      rAI35LalBet86VHR9IvX7GF5ob3tPfC1y8wR4Qiq0CIOlSrapT/zlHcEXtkGdMv0
-      +y5a8Ee9PDmAYzPSnja4kT3Wao9SFirkpN+5eIvqXKdfBxskCGw7Vh6r69e1NuWG
-      g005k5bp6W3g1ZFfyKSulpIvc4pqJhZ8dkkU+2mNDvmUaXVXbxtGX/3F9bVnO95N
-      CRg16iKdx3S+xUdHPwDHnLwV9bXYWMFWChzI2mpQ6VvnS0FLY1hII/e6m6V+fA6N
-      PhEjaupatKBMYvFszlr8Y5Vnqh0M8wsD2qE4M1Xq1xUzs1GkbsDewc2npPBe0C6+
-      PcVRsdSgzLZelTjg7WFW6pyLCQ1U+bhCs/Va5DSMIbb57YTx/sZfw8sc8aRoqkH/
-      2y5Kc+zhEZaJ3CMR1rGRGuYSYUVSgaKp+DyIZuj3bir251pf6m0sBdNCK5alMn/C
-      AJlHoGpwAsLz41GwmjVrlZn0LSlD5aoI8sj+3TQC58P6PmONRyAjFz1h2s+18Tk/
-      1Pldbwcy2+FKsOi6errf1Z8qpBMJxqdX7p9LDVjSCXY0RqHqQGHPSoucdXYq2S/N
-      32wgKu4ca2OwJ8SlBa3SiFs=
+      MIICTDCCAbWgAwIBAgIJAIuw7+/IF82dMA0GCSqGSIb3DQEBBQUAMD8xCzAJBgNV
+      BAYTAkVTMQswCQYDVQQIDAJNQTEPMA0GA1UEBwwGTWFkcmlkMRIwEAYDVQQKDAlF
+      dXJvQ2xvdWQwHhcNMTYxMDE4MTUwODE0WhcNMTYxMTE3MTUwODE0WjA/MQswCQYD
+      VQQGEwJFUzELMAkGA1UECAwCTUExDzANBgNVBAcMBk1hZHJpZDESMBAGA1UECgwJ
+      RXVyb0Nsb3VkMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDg8yqzo3p2SGOx
+      b00MP3ZKaAp02NDqNTkbIinXmL5IdebBzm7il4UzPjHflXn9s1BepmKsUi2Ekdxf
+      BIumEwMc/Si4BTS6X9tbzxdqWDkILZR3zjeD0FnrG46yeiZLoWyo7nc2qm+8tDp4
+      Xr9fl+LiMgYSf9+UiLC5q1VW3Qxk2wIDAQABo1AwTjAdBgNVHQ4EFgQU/xqQaATs
+      I74zqbm2PWzB8S15u4cwHwYDVR0jBBgwFoAU/xqQaATsI74zqbm2PWzB8S15u4cw
+      DAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQUFAAOBgQAENBqI2UgCY5aYa0mdxBog
+      DbvHxkJv9d4OOpsY+L1E5Y/2CURd9ZDtcRLM9PpdF5la90OiUkDe1iroG5SFcnzo
+      lTyBhuOrgsKKFH85BulZ28lNJX4vWlTY8aUPValXSgv2+3p4weRqst8mufjvntFG
+      wLILnyEBVtGUDZATr0bd+Q==
       -----END CERTIFICATE-----
-
   - path: "/home/root/registry_certs/domain.key"
     permissions: "0600"
     owner: "root"
     content: |
-      -----BEGIN PRIVATE KEY-----
-      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
-      fGjfVMY/9WlD0bzaaxt8rnZK4nL9
-      -----END PRIVATE KEY-----
+      -----BEGIN RSA PRIVATE KEY-----
+      MIICXgIBAAKBgQDg8yqzo3p2SGOxb00MP3ZKaAp02NDqNTkbIinXmL5IdebBzm7i
+      l4UzPjHflXn9s1BepmKsUi2EkdxfBIumEwMc/Si4BTS6X9tbzxdqWDkILZR3zjeD
+      0FnrG46yeiZLoWyo7nc2qm+8tDp4Xr9fl+LiMgYSf9+UiLC5q1VW3Qxk2wIDAQAB
+      AoGBAI4sgmepQkQx+nhxnSPJlGzwlvNE+b2dR+uDSyjNjC5l/iOt4l1qYLCDdagX
+      ZFPZmklIJgM9qTEpszuGtvCPAZ6Ib58rO63aYoS3PyvFPXmfN7elQdKMntJmTZKj
+      KnqtrrJktbs/qRn918TtnDF+agfdoDEor3mYAMUvA7hMNe1BAkEA81JevwisbXiR
+      8uD1jcou8AG0O7NI+U9/uQ48GBDEMscErqyYdpy0QawZYwUIgzoNXayz8Nd9DuB0
+      knu+eLK/oQJBAOyrvK5jOgs6nXLyuxjOPpoEqgQwwg2MxWCcWummvUszLFcHdvRH
+      9OrqXkhXAeqqlbq0wsgPj+eplduziMGDQvsCQQCTgdHyWZ2+V6OS7BGwvWsrEL1k
+      m9GXYjx5wUlpBXELn18VTYi4D1OvpFdXkguREjZcHYCQdvJXfHbu/pl/rk1BAkEA
+      k4JKnGpuD/edkLpnEIPjkr1bdjcpi6Z0ks2BAGYTT156wVd+taxvo0cmMnJAWJGv
+      tunZCTZh2+Lf60pP70SvpwJAXiDR6M8tU1R9XUadF291Z9bBvtojajcoFMDQTJiq
+      pNoMgyKp2BKE19JaVocDJX4Rzz/Iht0ClNndJws7pIbWag==
+      -----END RSA PRIVATE KEY-----
   - path: "/run/wcnotify.sh"
     permissions: "0755"
     owner: "root"
@@ -154,7 +96,7 @@ coreos:
         ExecStartPre=-/usr/bin/docker rm registry
         ExecStartPre=/usr/bin/docker pull registry:2.5
 
-        ExecStart=/usr/bin/docker run -d -p 443:5000 -v /var/lib/docker/registry:/var/lib/registry -v /home/root/registry_certs:/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key --restart=always --name registry registry:2.5
+        ExecStart=/usr/bin/docker run -d -p 5000:5000 -v /var/lib/docker/registry:/var/lib/registry -v /home/root/registry_certs:/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=inmemory--restart=always --name registry registry:2.5
         ExecStop=/usr/bin/docker rm -f registry
 
         [Install]
@@ -165,7 +107,7 @@ coreos:
           content: |
             [Service]
             Environment="DOCKER_OPT_MTU=--mtu=$mtu$"
-            Environment="DOCKER_OPTS=--registry-mirror=https://$hostname$"
+            Environment="DOCKER_OPTS=--registry-mirror=https://$hostname$:5000"
         - name: 10-wait-docker.conf
           content: |
             [Unit]
