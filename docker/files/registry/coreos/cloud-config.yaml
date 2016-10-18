@@ -1,4 +1,5 @@
 #cloud-config
+hostname: "$hostname$"
 write_files:
   - path: "/home/root/registry_certs/domain.crt"
     permissions: "0644"
@@ -96,6 +97,12 @@ write_files:
       aeRv3SSickUjiRnnpxU5O/qhpC++8LzjE64s3pgk+oYLi9wp2m0jc/62oPQzi74a
       fGjfVMY/9WlD0bzaaxt8rnZK4nL9
       -----END PRIVATE KEY-----
+  - path: "/run/wcnotify.sh"
+    permissions: "0755"
+    owner: "root"
+    content: |
+      #!/bin/bash
+      /usr/bin/$wc_notify$ --data-binary '{"status": "SUCCESS", "reason": "Registry is ready , :)", "data": "OK"}'
   - path: "/etc/hosts"
     permissions: "0644"
     owner: "root"
@@ -147,17 +154,18 @@ coreos:
         ExecStartPre=-/usr/bin/docker rm registry
         ExecStartPre=/usr/bin/docker pull registry:2.5
 
-        ExecStart=/usr/bin/docker run -d -p 5000:5000 -v /var/lib/docker/registry:/var/lib/registry -v /home/root/registry_certs:/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key --restart=always --name registry registry:2.5
+        ExecStart=/usr/bin/docker run -d -p 443:5000 -v /var/lib/docker/registry:/var/lib/registry -v /home/root/registry_certs:/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key --restart=always --name registry registry:2.5
         ExecStop=/usr/bin/docker rm -f registry
 
         [Install]
         WantedBy=multi-user.target
     - name: docker.service
       drop-ins:
-        - name: 09-mtu-docker.conf
+        - name: 09-opts-docker.conf
           content: |
             [Service]
             Environment="DOCKER_OPT_MTU=--mtu=$mtu$"
+            Environment="DOCKER_OPTS=--registry-mirror=https://$hostname$"
         - name: 10-wait-docker.conf
           content: |
             [Unit]
@@ -167,5 +175,10 @@ coreos:
       runtime: true
       command: start
       content: |
+        [Unit]
+        Description=Heat wait condition notifier
+        After=docker-registry.service
+        Requires=docker-registry.service
         [Service]
-        ExecStart=/usr/bin/$wc_notify$ --data-binary '{"Status": "SUCCESS", "Reason": "Registry is ready , :)", "Data": "OK"}'
+        Type=oneshot
+        ExecStart=/run/wcnotify.sh
