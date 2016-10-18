@@ -9,6 +9,7 @@ parameters:
   hostname:
     type: string
     description: Name of the server, docke host or registry.
+    default: registry-eurocloud
 
   docker_mtu:
     type: number
