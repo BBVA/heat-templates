@@ -108,18 +108,6 @@ resources:
 
 outputs:
 
-  deployment_result:
-    value:
-      get_attr: [software_deployment, result]
-  deployment_stdout:
-    value:
-      get_attr: [software_deployment, deploy_stdout]
-  deployment_stderr:
-    value:
-      get_attr: [software_deployment, deploy_stderr]
-  deployment_status_code:
-    value:
-      get_attr: [software_deployment, deploy_status_code]
   wc_data:
     description: Syncronization data
     value: { get_attr: ['wait_condition', 'data'] }
