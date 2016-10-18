@@ -168,4 +168,4 @@ coreos:
       command: start
       content: |
         [Service]
-        ExecStart=$wc_notify$ --data-binary '{"Status": "SUCCESS", "Reason": "Registry is ready , :)", "Data": "OK"}'
+        ExecStart=/usr/bin/$wc_notify$ --data-binary '{"Status": "SUCCESS", "Reason": "Registry is ready , :)", "Data": "OK"}'
