@@ -7,6 +7,7 @@ write_files:
     content: |
       #!/bin/bash
       if [ ! -f /home/root/registry_certs/docker-registry.crt ]; then
+        cd /home/root/registry_certs/
         /usr/bin/openssl req -new -newkey rsa:4096 -nodes -x509 \
          -subj "/C=ES/ST=MADRID/L=MADRID/O=EuroCloud/CN=$hostname$.$domain$" \
          -keyout docker-registry.key -out docker-registry.crt
@@ -52,10 +53,10 @@ write_files:
       #!/bin/bash
       REDIS_PASSWORD="$redis_password$"
       USE_REDIS="$use_redis$"
-      if [[ "$USE_REDIS" == "true" ]]; then
+      if [[ "$USE_REDIS" == "True" ]]; then
         /usr/bin/docker run -d -p 6379:6379 \
         -v /var/lib/docker/redis/data:/data \
-        -v /home/root/redis/redis.conf:/usr/local/etc/redis/redis.conf
+        -v /home/root/redis/redis.conf:/usr/local/etc/redis/redis.conf \
         --restart=always --name redis -d redis:3.2.4 redis-server /usr/local/etc/redis/redis.conf \
         --appendonly yes
       else
