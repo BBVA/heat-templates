@@ -6,15 +6,13 @@ write_files:
     owner: "root"
     content: |
       #!/bin/bash
-      cd /home/root/registry_certs/
-      /usr/bin/openssl req -new -newkey rsa:4096 -nodes -x509 -subj "/C=ES/ST=MADRID/L=MADRID/O=EuroCloud/CN=$hostname$.$domain$" -keyout docker-registry.key -out docker-registry.crt
-      /usr/bin/cat docker-registry.crt
-  - path: "/run/wcnotify.sh"
-    permissions: "0755"
-    owner: "root"
-    content: |
-      #!/bin/bash
-      /usr/bin/$wc_notify$ --data-binary '{"status": "SUCCESS", "reason": "Registry is ready , :)", "data": "OK"}'
+      if [ ! -f /home/root/registry_certs/docker-registry.crt ]; then
+        /usr/bin/openssl req -new -newkey rsa:4096 -nodes -x509 \
+         -subj "/C=ES/ST=MADRID/L=MADRID/O=EuroCloud/CN=$hostname$.$domain$" \
+         -keyout docker-registry.key -out docker-registry.crt
+      else
+        echo "Skipping crt generation ... file /home/root/registry_certs/docker-registry.crt exists"
+      fi
   - path: "/run/docker-registry.sh"
     permissions: "0755"
     owner: "root"
@@ -22,27 +20,116 @@ write_files:
       #!/bin/bash
       REG_USER="$registry_user$"
       REG_PASSWORD="$registry_password$"
+      USE_REDIS="$use_redis$"
       envs="\
       -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
       -e REGISTRY_HTTP_SECRET=$secret$ \
       -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/docker-registry.crt \
-      -e REGISTRY_HTTP_TLS_KEY=/certs/docker-registry.key \
-      -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=inmemory"
+      -e REGISTRY_HTTP_TLS_KEY=/certs/docker-registry.key"
+      if [[ "$USE_REDIS" == "true" ]]; then
+        envs="$envs \
+        -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=inmemory"
+      else
+        envs="$envs \
+        -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=redis \
+        -e REGISTRY_REDIS_ADDR=$hostname$:6379 \
+        -e REGISTRY_REDIS_PASSWORD=$redis_password$"
+      fi
       if [[ ! -z "$REG_USER" &&  ! -z "$REG_PASSWORD" ]];then
         envs="$envs \
         -e REGISTRY_PROXY_USERNAME=$REG_USER
         -e REGISTRY_PROXY_PASSWORD=$REG_PASSWORD"
       fi
-      /usr/bin/docker run -d -p 443:5000 \
+      /usr/bin/docker run -p 443:5000 \
       -v /var/lib/docker/registry:/var/lib/registry \
       -v /home/root/registry_certs:/certs \
       $envs \
-      --restart=always --name registry registry:2.5
+      --restart=always --name registry -d registry:2.5
+  - path: "/run/docker-redis.sh"
+    permissions: "0755"
+    owner: "root"
+    content: |
+      #!/bin/bash
+      REDIS_PASSWORD="$redis_password$"
+      USE_REDIS="$use_redis$"
+      if [[ "$USE_REDIS" == "true" ]]; then
+        /usr/bin/docker run -d -p 6379:6379 \
+        -v /var/lib/docker/redis/data:/data \
+        -v /home/root/redis/redis.conf:/usr/local/etc/redis/redis.conf
+        --restart=always --name redis -d redis:3.2.4 redis-server /usr/local/etc/redis/redis.conf \
+        --appendonly yes
+      else
+        echo "Using in-memory cache for registry. Skipping redis installation"
+      fi
+  - path: "/home/root/redis/redis.conf"
+    permissions: "0644"
+    owner: "root"
+    content: |
+      protected-mode yes
+      port 6379
+      tcp-backlog 511
+      timeout 0
+      tcp-keepalive 300
+      daemonize no
+      supervised no
+      pidfile /var/run/redis_6379.pid
+      loglevel notice
+      logfile ""
+      databases 16
+      save 900 1
+      save 300 10
+      save 60 10000
+      stop-writes-on-bgsave-error yes
+      rdbcompression yes
+      rdbchecksum yes
+      dbfilename dump.rdb
+      dir ./
+      slave-serve-stale-data yes
+      slave-read-only yes
+      repl-diskless-sync no
+      repl-diskless-sync-delay 5
+      repl-disable-tcp-nodelay no
+      slave-priority 100
+      appendonly no
+      appendfilename "appendonly.aof"
+      appendfsync everysec
+      no-appendfsync-on-rewrite no
+      auto-aof-rewrite-percentage 100
+      auto-aof-rewrite-min-size 64mb
+      aof-load-truncated yes
+      lua-time-limit 5000
+      slowlog-log-slower-than 10000
+      slowlog-max-len 128
+      latency-monitor-threshold 0
+      notify-keyspace-events ""
+      hash-max-ziplist-entries 512
+      hash-max-ziplist-value 64
+      list-max-ziplist-size -2
+      list-compress-depth 0
+      set-max-intset-entries 512
+      zset-max-ziplist-entries 128
+      zset-max-ziplist-value 64
+      hll-sparse-max-bytes 3000
+      activerehashing yes
+      client-output-buffer-limit normal 0 0 0
+      client-output-buffer-limit slave 256mb 64mb 60
+      client-output-buffer-limit pubsub 32mb 8mb 60
+      hz 10
+      aof-rewrite-incremental-fsync yes
+      requirepass $redis_password$
+  - path: "/run/wcnotify.sh"
+    permissions: "0755"
+    owner: "root"
+    content: |
+      #!/bin/bash
+      /usr/bin/$wc_notify$ --data-binary '{"status": "SUCCESS", "reason": "Registry is ready , :)", "data": "OK"}'
+
   - path: "/etc/hosts"
     permissions: "0644"
     owner: "root"
     content: |
       127.0.0.1 localhost $hostname$
+      ::1       localhost $hostname$
 coreos:
   units:
     - name: gen-cert-key.service
@@ -79,13 +166,28 @@ coreos:
         What=/dev/vdb
         Where=/var/lib/docker
         Type=ext4
+    - name: docker-redis.service
+      command: start
+      content: |
+        [Unit]
+        Description=Docker redis
+        After=docker.service
+        Requires=docker.service
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        TimeoutStartSec=0
+        ExecStart=/run/docker-redis.sh
+        ExecStop=/usr/bin/docker rm -f redis
+        [Install]
+        WantedBy=multi-user.target
     - name: docker-registry.service
       command: start
       content: |
         [Unit]
         Description=Docker registry
-        After=docker.service gen-cert-key.service
-        Requires=docker.service gen-cert-key.service
+        After=docker.service docker-redis.service gen-cert-key.service
+        Requires=docker.service docker-redis.service gen-cert-key.service
         [Service]
         Type=oneshot
         RemainAfterExit=yes
