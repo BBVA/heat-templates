@@ -27,6 +27,11 @@ parameters:
     hidden: true
     default: ''
 
+  use_redis:
+    type: boolean
+    description: Use redis as cache backend, if false then inmemory will be used.
+    default: false
+
   docker_mtu:
     type: number
     description: MTU.
@@ -82,6 +87,11 @@ resources:
     properties:
       length: 8
 
+  redis_password:
+    type: OS::Heat::RandomString
+    properties:
+      length: 8
+
   server:
     type: OS::Nova::Server
     depends_on:
@@ -104,6 +114,8 @@ resources:
             "$secret$": { get_attr: [ secret, value ] }
             "$registry_user$": { get_param: registry_user }
             "$registry_password$": { get_param: registry_password }
+            "$use_redis$": { get_param: use_redis }
+            "$redis_password$": { get_attr: [ redis_password, value ] }
             "$domain$": { get_param: domain }
             "$hostname$": { get_param: hostname }
             "$mtu$": { get_param: docker_mtu }
@@ -141,3 +153,7 @@ outputs:
      - { get_attr: [ server, addresses ] }
   secret:
     value: { get_attr: [ secret, value ]}
+  redis:
+    value:
+     - { get_param: use_redis }
+     - { get_attr: [ redis_password, value ]}
