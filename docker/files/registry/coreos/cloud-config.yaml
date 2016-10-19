@@ -1,97 +1,14 @@
 #cloud-config
 hostname: "$hostname$"
 write_files:
-  - path: "/home/root/registry_certs/docker-registry.crt"
-    permissions: "0644"
+  - path: "/home/root/registry_certs/gencertkey.sh"
+    permissions: "0755"
     owner: "root"
     content: |
-      -----BEGIN CERTIFICATE-----
-      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
-      V2mkp3oJqXt+4l/FEmQtZFCXElrlwhnu/Q==
-      -----END CERTIFICATE-----
-  - path: "/home/root/registry_certs/docker-registry.key"
-    permissions: "0600"
-    owner: "root"
-    content: |
-      -----BEGIN PRIVATE KEY-----
-      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
-      Mzd09Z0YjzscsAxlSWTwhLnYtVerQw==
-      -----END PRIVATE KEY-----
+      #!/bin/bash
+      cd /home/root/registry_certs/
+      /usr/bin/openssl req -new -newkey rsa:4096 -nodes -x509 -subj "/C=ES/ST=MADRID/L=MADRID/O=EuroCloud/CN=$hostname$.$domain$" -keyout docker-registry.key -out docker-registry.crt
+      /usr/bin/cat docker-registry.crt
   - path: "/run/wcnotify.sh"
     permissions: "0755"
     owner: "root"
@@ -105,6 +22,15 @@ write_files:
       127.0.0.1 localhost $hostname$
 coreos:
   units:
+    - name: gen-cert-key.service
+      runtime: true
+      command: start
+      content: |
+        [Unit]
+        Description=Generate cert and key
+        [Service]
+        Type=oneshot
+        ExecStart=/home/root/registry_certs/gencertkey.sh
     - name: format-ephemeral.service
       runtime: true
       command: start
@@ -135,21 +61,20 @@ coreos:
       content: |
         [Unit]
         Description=Docker registry for basic images for k8s cluster
-        After=docker.service
-        Requires=docker.service
-
+        After=docker.service gen-cert-key.service
+        Requires=docker.service gen-cert-key.service
         [Service]
         Type=oneshot
         RemainAfterExit=yes
         TimeoutStartSec=0
-        ExecStartPre=/usr/bin/mkdir -p /etc/docker/certs.d/$hostname$:5000
-        ExecStartPre=/usr/bin/cp /home/root/registry_certs/docker-registry.crt /etc/docker/certs.d/$hostname$:5000/ca.crt
+        ExecStartPre=/usr/bin/mkdir -p /etc/docker/certs.d/$hostname$.$domain$
+        ExecStartPre=/usr/bin/cp /home/root/registry_certs/docker-registry.crt /etc/docker/certs.d/$hostname$.$domain$/ca.crt
         ExecStartPre=/usr/bin/systemctl restart docker
         ExecStartPre=-/usr/bin/docker kill registry
         ExecStartPre=-/usr/bin/docker rm registry
         ExecStartPre=/usr/bin/docker pull registry:2.5
 
-        ExecStart=/usr/bin/docker run -d -p 5000:5000 -v /var/lib/docker/registry:/var/lib/registry -v /home/root/registry_certs:/certs -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io -e REGISTRY_HTTP_SECRET=secret -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/docker-registry.crt -e REGISTRY_HTTP_TLS_KEY=/certs/docker-registry.key -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=inmemory --restart=always --name registry registry:2.5
+        ExecStart=/usr/bin/docker run -d -p 443:5000 -v /var/lib/docker/registry:/var/lib/registry -v /home/root/registry_certs:/certs -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io -e REGISTRY_HTTP_SECRET=$secret$ -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/docker-registry.crt -e REGISTRY_HTTP_TLS_KEY=/certs/docker-registry.key -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=inmemory --restart=always --name registry registry:2.5
         ExecStop=/usr/bin/docker rm -f registry
 
         [Install]
@@ -160,7 +85,7 @@ coreos:
           content: |
             [Service]
             Environment="DOCKER_OPT_MTU=--mtu=$mtu$"
-            Environment="DOCKER_OPTS=--registry-mirror=https://$hostname$:5000"
+            Environment="DOCKER_OPTS=--registry-mirror=https://$hostname$.$domain$"
         - name: 10-wait-docker.conf
           content: |
             [Unit]
