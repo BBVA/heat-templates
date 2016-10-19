@@ -20,8 +20,8 @@ write_files:
     owner: "root"
     content: |
       #!/bin/bash
-      REG_USER=$registry_user$
-      REG_PASSWORD=$registry_password$
+      REG_USER="$registry_user$"
+      REG_PASSWORD="$registry_password$"
       envs="\
       -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
       -e REGISTRY_HTTP_SECRET=$secret$ \
