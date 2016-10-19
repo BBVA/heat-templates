@@ -15,6 +15,29 @@ write_files:
     content: |
       #!/bin/bash
       /usr/bin/$wc_notify$ --data-binary '{"status": "SUCCESS", "reason": "Registry is ready , :)", "data": "OK"}'
+  - path: "/run/docker-registry.sh"
+    permissions: "0755"
+    owner: "root"
+    content: |
+      #!/bin/bash
+      REG_USER=$registry_user$
+      REG_PASSWORD=$registry_password$
+      envs="\
+      -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
+      -e REGISTRY_HTTP_SECRET=$secret$ \
+      -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/docker-registry.crt \
+      -e REGISTRY_HTTP_TLS_KEY=/certs/docker-registry.key \
+      -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=inmemory"
+      if [[ ! -z "$REG_USER" &&  ! -z "$REG_PASSWORD" ]];then
+        envs="$envs \
+        -e REGISTRY_PROXY_USERNAME=$REG_USER
+        -e REGISTRY_PROXY_PASSWORD=$REG_PASSWORD"
+      fi
+      /usr/bin/docker run -d -p 443:5000 \
+      -v /var/lib/docker/registry:/var/lib/registry \
+      -v /home/root/registry_certs:/certs \
+      $envs \
+      --restart=always --name registry registry:2.5
   - path: "/etc/hosts"
     permissions: "0644"
     owner: "root"
@@ -73,10 +96,8 @@ coreos:
         ExecStartPre=-/usr/bin/docker kill registry
         ExecStartPre=-/usr/bin/docker rm registry
         ExecStartPre=/usr/bin/docker pull registry:2.5
-
-        ExecStart=/usr/bin/docker run -d -p 443:5000 -v /var/lib/docker/registry:/var/lib/registry -v /home/root/registry_certs:/certs -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io -e REGISTRY_HTTP_SECRET=$secret$ -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/docker-registry.crt -e REGISTRY_HTTP_TLS_KEY=/certs/docker-registry.key -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=inmemory --restart=always --name registry registry:2.5
+        ExecStart=/run/docker-registry.sh
         ExecStop=/usr/bin/docker rm -f registry
-
         [Install]
         WantedBy=multi-user.target
     - name: docker.service
