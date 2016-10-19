@@ -83,7 +83,7 @@ coreos:
       command: start
       content: |
         [Unit]
-        Description=Docker registry for basic images for k8s cluster
+        Description=Docker registry
         After=docker.service gen-cert-key.service
         Requires=docker.service gen-cert-key.service
         [Service]
@@ -92,10 +92,6 @@ coreos:
         TimeoutStartSec=0
         ExecStartPre=/usr/bin/mkdir -p /etc/docker/certs.d/$hostname$.$domain$
         ExecStartPre=/usr/bin/cp /home/root/registry_certs/docker-registry.crt /etc/docker/certs.d/$hostname$.$domain$/ca.crt
-        ExecStartPre=/usr/bin/systemctl restart docker
-        ExecStartPre=-/usr/bin/docker kill registry
-        ExecStartPre=-/usr/bin/docker rm registry
-        ExecStartPre=/usr/bin/docker pull registry:2.5
         ExecStart=/run/docker-registry.sh
         ExecStop=/usr/bin/docker rm -f registry
         [Install]
