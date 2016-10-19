@@ -9,7 +9,23 @@ parameters:
   hostname:
     type: string
     description: Name of the server, docke host or registry.
-    default: registry-eurocloud
+    default: docker-registry
+
+  domain:
+    type: string
+    description: Domain, used to create certificate.
+    default: eurocloud.es
+
+  registry_user:
+    type: string
+    description: Username of your private account.
+    default: ''
+
+  registry_password:
+    type: string
+    description: Password of your private account.
+    hidden: true
+    default: ''
 
   docker_mtu:
     type: number
@@ -41,7 +57,7 @@ parameters:
     type: string
     default: PUBLIC-ACCESS-POOL-2
     constraints:
-    - allowed_values: ["PUBLIC-ACCESS-POOL-1", "PUBLIC-ACCESS-POOL-2"]
+    - allowed_values: ['PUBLIC-ACCESS-POOL-1', 'PUBLIC-ACCESS-POOL-2']
     - custom_constraint: neutron.network
     description: Pool of floating ip addresses
 
@@ -60,6 +76,11 @@ resources:
     properties:
       handle: { get_resource: wait_handle }
       timeout: 10000
+
+  secret:
+    type: OS::Heat::RandomString
+    properties:
+      length: 8
 
   server:
     type: OS::Nova::Server
@@ -80,9 +101,13 @@ resources:
         str_replace:
           template: { get_file: files/registry/coreos/cloud-config.yaml }
           params:
+            "$secret$": { get_attr: [ secret, value ] }
+            "$registry_user$": { get_param: registry_user }
+            "$registry_password$": { get_param: registry_password }
+            "$domain$": { get_param: domain }
             "$hostname$": { get_param: hostname }
             "$mtu$": { get_param: docker_mtu }
-            "$wc_notify$": { get_attr: ['wait_handle', 'curl_cli'] }
+            "$wc_notify$": { get_attr: [ wait_handle, curl_cli ] }
 
   floating_ip:
     type: OS::Neutron::FloatingIP
@@ -101,7 +126,7 @@ resources:
       size: { get_param: volume_size }
 
   volume_attach:
-    type: "OS::Cinder::VolumeAttachment"
+    type: OS::Cinder::VolumeAttachment
     properties:
       instance_uuid: { get_resource: server }
       volume_id: { get_resource: volume }
@@ -110,10 +135,9 @@ resources:
 outputs:
 
   wc_data:
-    description: Syncronization data
-    value: { get_attr: ['wait_condition', 'data'] }
-  registry ips:
-    description: Container Information
+    value: { get_attr: [ wait_condition, data] }
+  registry_ips:
     value:
      - { get_attr: [ server, addresses ] }
-     - { get_attr: [ floating_ip, floating_ip_address]}
+  secret:
+    value: { get_attr: [ secret, value ]}
