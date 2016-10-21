@@ -8,13 +8,11 @@ parameters:
 
   hostname:
     type: string
-    description: Name of the server, docke host or registry.
-    default: docker-registry
+    description: Server name, docke host or registry.
 
   domain:
     type: string
-    description: Domain, used to create certificate.
-    default: eurocloud.es
+    description: Domain name. (i.e eurocloud.es)
 
   registry_user:
     type: string
