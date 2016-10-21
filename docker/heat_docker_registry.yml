@@ -145,13 +145,17 @@ resources:
 outputs:
 
   wc_data:
+    description: Wait condition signal
     value: { get_attr: [ wait_condition, data] }
   registry_ips:
+    description: Registry addresses
     value:
      - { get_attr: [ server, addresses ] }
   secret:
+    description: The secret for http server
     value: { get_attr: [ secret, value ]}
   redis:
+    description: Redis
     value:
      - { get_param: use_redis }
      - { get_attr: [ redis_password, value ]}
