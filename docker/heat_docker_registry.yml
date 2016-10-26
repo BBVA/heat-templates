@@ -113,7 +113,6 @@ resources:
     type: OS::Nova::Server
     depends_on:
     - volume
-    - swift_container
     properties:
       image: { get_param: server_image }
       flavor: { get_param: server_flavor }
