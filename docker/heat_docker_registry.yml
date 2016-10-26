@@ -14,21 +14,16 @@ parameters:
     type: string
     description: Domain name. (i.e eurocloud.es)
 
-  registry_user:
+  registry_username:
     type: string
-    description: Username of your private account.
+    description: Username of your private account in dockerhub.
     default: ''
 
   registry_password:
     type: string
-    description: Password of your private account.
+    description: Password of your private account in dockerhub.
     hidden: true
     default: ''
-
-  use_redis:
-    type: boolean
-    description: Use redis as cache backend, if false then inmemory will be used.
-    default: false
 
   docker_mtu:
     type: number
@@ -69,6 +64,30 @@ parameters:
     description: The size of attached volume for docker registry.
     default: 20
 
+  os_username:
+    type: string
+    description: Your username in EuroCloud.
+
+  os_password:
+    type: string
+    description: Your password for your user in EuroCloud.
+    hidden: true
+
+  os_swift_container:
+    type: string
+    description: Name of swift container.
+    default: docker-registry
+
+  os_region:
+    type: string
+    description: Name of swift container.
+    default: Spain_Mad
+
+  os_authurl:
+    type: string
+    description: Auth URL, endpoint of identity service.
+    default: https://7cLJG9372wns497cT2d97PuRO.cloud.bbva.com/v2.0
+
 resources:
 
   wait_handle:
@@ -88,12 +107,13 @@ resources:
   redis_password:
     type: OS::Heat::RandomString
     properties:
-      length: 8
+      length: 16
 
   server:
     type: OS::Nova::Server
     depends_on:
     - volume
+    - swift_container
     properties:
       image: { get_param: server_image }
       flavor: { get_param: server_flavor }
@@ -109,13 +129,18 @@ resources:
         str_replace:
           template: { get_file: files/registry/coreos/cloud-config.yaml }
           params:
-            "$secret$": { get_attr: [ secret, value ] }
-            "$registry_user$": { get_param: registry_user }
-            "$registry_password$": { get_param: registry_password }
-            "$use_redis$": { get_param: use_redis }
-            "$redis_password$": { get_attr: [ redis_password, value ] }
-            "$domain$": { get_param: domain }
             "$hostname$": { get_param: hostname }
+            "$domain$": { get_param: domain }
+            "$os_username$": { get_param: os_username }
+            "$os_password$": { get_param: os_password }
+            "$os_tenant_id$": { get_param: "OS::project_id" }
+            "$os_region$": { get_param: os_region }
+            "$os_authurl$": { get_param: os_authurl }
+            "$os_swift_container$": { get_param: os_swift_container }
+            "$redis_password$": { get_attr: [ redis_password, value ] }
+            "$secret$": { get_attr: [ secret, value ] }
+            "$registry_username$": { get_param: registry_username }
+            "$registry_password$": { get_param: registry_password }
             "$mtu$": { get_param: docker_mtu }
             "$wc_notify$": { get_attr: [ wait_handle, curl_cli ] }
 
@@ -143,10 +168,6 @@ resources:
       mountpoint: /dev/vdb
 
 outputs:
-
-  wc_data:
-    description: Wait condition signal
-    value: { get_attr: [ wait_condition, data] }
   registry_ips:
     description: Registry addresses
     value:
@@ -155,7 +176,6 @@ outputs:
     description: The secret for http server
     value: { get_attr: [ secret, value ]}
   redis:
-    description: Redis
+    description: Redis password
     value:
-     - { get_param: use_redis }
      - { get_attr: [ redis_password, value ]}
