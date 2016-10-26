@@ -8,59 +8,13 @@ write_files:
       #!/bin/bash
       if [ ! -f /home/root/registry_certs/docker-registry.crt ]; then
         cd /home/root/registry_certs/
-        /usr/bin/openssl req -new -newkey rsa:4096 -nodes -x509 \
-         -subj "/C=ES/ST=MADRID/L=MADRID/O=EuroCloud/CN=$hostname$.$domain$" \
-         -keyout docker-registry.key -out docker-registry.crt
+        /usr/bin/openssl req \
+        -newkey rsa:4096 -nodes -sha256 \
+        -keyout docker-registry.key -x509 -days 1000 \
+        -subj "/C=ES/ST=MADRID/L=MADRID/O=BBVA/OU=EuroCloud/CN=$hostname$.$domain$" \
+        -out docker-registry.crt
       else
         echo "Skipping crt generation ... file /home/root/registry_certs/docker-registry.crt exists"
-      fi
-  - path: "/run/docker-registry.sh"
-    permissions: "0755"
-    owner: "root"
-    content: |
-      #!/bin/bash
-      REG_USER="$registry_user$"
-      REG_PASSWORD="$registry_password$"
-      USE_REDIS="$use_redis$"
-      envs="\
-      -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
-      -e REGISTRY_HTTP_SECRET=$secret$ \
-      -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/docker-registry.crt \
-      -e REGISTRY_HTTP_TLS_KEY=/certs/docker-registry.key"
-      if [[ "$USE_REDIS" == "true" ]]; then
-        envs="$envs \
-        -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=inmemory"
-      else
-        envs="$envs \
-        -e REGISTRY_STORAGE_CACHE_BLOBDESCRIPTOR=redis \
-        -e REGISTRY_REDIS_ADDR=$hostname$.$domain$:6379 \
-        -e REGISTRY_REDIS_PASSWORD=$redis_password$"
-      fi
-      if [[ ! -z "$REG_USER" &&  ! -z "$REG_PASSWORD" ]];then
-        envs="$envs \
-        -e REGISTRY_PROXY_USERNAME=$REG_USER
-        -e REGISTRY_PROXY_PASSWORD=$REG_PASSWORD"
-      fi
-      /usr/bin/docker run -p 443:5000 \
-      -v /var/lib/docker/registry:/var/lib/registry \
-      -v /home/root/registry_certs:/certs \
-      $envs \
-      --restart=always --name registry -d registry:2.5
-  - path: "/run/docker-redis.sh"
-    permissions: "0755"
-    owner: "root"
-    content: |
-      #!/bin/bash
-      REDIS_PASSWORD="$redis_password$"
-      USE_REDIS="$use_redis$"
-      if [[ "$USE_REDIS" == "True" ]]; then
-        /usr/bin/docker run -d -p 6379:6379 \
-        -v /var/lib/docker/redis/data:/data \
-        -v /home/root/redis/redis.conf:/usr/local/etc/redis/redis.conf \
-        --restart=always --name redis -d redis:3.2.4 redis-server /usr/local/etc/redis/redis.conf \
-        --appendonly yes
-      else
-        echo "Using in-memory cache for registry. Skipping redis installation"
       fi
   - path: "/home/root/redis/redis.conf"
     permissions: "0644"
@@ -118,6 +72,102 @@ write_files:
       hz 10
       aof-rewrite-incremental-fsync yes
       requirepass $redis_password$
+  - path: "/home/root/registry/registry-config.yml"
+    permissions: "0644"
+    owner: "root"
+    content: |
+      version: 0.1
+      log:
+        fields:
+          service: registry
+      storage:
+        cache:
+          layerinfo: inmemory
+        swift:
+          username: $os_username$
+          password: $os_password$
+          authurl: $os_authurl$
+          tenantid: $os_tenant_id$
+          insecureskipverify: true
+          region: $os_region$
+          container: $os_swift_container$
+      auth:
+        htpasswd:
+          realm: basic-realm
+          path: /etc/htpasswd
+      http:
+        addr: :5000
+        host: https://$hostname$.$domain$:5000
+        secret: $secret$
+        tls:
+          certificate: /certs/docker-registry.crt
+          key: /certs/docker-registry.key
+  - path: "/home/root/registry/registry-proxy-config.yml"
+    permissions: "0644"
+    owner: "root"
+    content: |
+      version: 0.1
+      log:
+        fields:
+          service: registry
+      storage:
+        filesystem:
+          rootdirectory: /var/lib/registry
+          maxthreads: 100
+        cache:
+          blobdescriptor: redis
+      http:
+        addr: :5000
+        host: https://$hostname$.$domain$
+        secret: $secret$
+        tls:
+          certificate: /certs/docker-registry.crt
+          key: /certs/docker-registry.key
+      redis:
+        addr: $hostname$.$domain$:6379
+        password: $redis_password$
+        db: 0
+        dialtimeout: 10ms
+        readtimeout: 10ms
+        writetimeout: 10ms
+        pool:
+          maxidle: 16
+          maxactive: 64
+          idletimeout: 300s
+      proxy:
+        remoteurl: https://registry-1.docker.io
+        username: $registry_username$
+        password: $registry_password$
+  - path: "/run/docker-redis.sh"
+    permissions: "0755"
+    owner: "root"
+    content: |
+      #!/bin/bash
+      /usr/bin/docker run -d -p 6379:6379 \
+      -v /var/lib/docker/redis/data:/data \
+      -v /home/root/redis/redis.conf:/usr/local/etc/redis/redis.conf \
+      --restart=always --name redis -d redis:3.2.4 redis-server /usr/local/etc/redis/redis.conf \
+      --appendonly yes
+  - path: "/run/docker-registry.sh"
+    permissions: "0755"
+    owner: "root"
+    content: |
+      #!/bin/bash
+      /usr/bin/docker run -p 5000:5000 \
+      -v /home/root/registry/registry-config.yml:/etc/docker/registry/config.yml \
+      -v /var/lib/docker/registry:/var/lib/registry \
+      -v /home/root/registry_certs:/certs \
+      --restart=always --name registry -d registry:2.5
+  - path: "/run/docker-registry-proxy.sh"
+    permissions: "0755"
+    owner: "root"
+    content: |
+      #!/bin/bash
+      /usr/bin/docker run -p 443:5000 \
+      -v //home/root/registry/registry-proxy-config.yml:/etc/docker/registry/config.yml \
+      -v /var/lib/docker/registry:/var/lib/registry \
+      -v /home/root/registry_certs:/certs \
+      --restart=always --name registry-proxy -d registry:2.5
   - path: "/run/wcnotify.sh"
     permissions: "0755"
     owner: "root"
@@ -161,21 +211,18 @@ coreos:
         What=/dev/vdb
         Where=/var/lib/docker
         Type=ext4
-    - name: docker-redis.service
-      command: start
-      content: |
-        [Unit]
-        Description=Docker redis
-        After=docker.service
-        Requires=docker.service
-        [Service]
-        Type=oneshot
-        RemainAfterExit=yes
-        TimeoutStartSec=0
-        ExecStart=/run/docker-redis.sh
-        ExecStop=/usr/bin/docker rm -f redis
-        [Install]
-        WantedBy=multi-user.target
+    - name: docker.service
+      drop-ins:
+        - name: 09-opts-docker.conf
+          content: |
+            [Service]
+            Environment="DOCKER_OPT_MTU=--mtu=$mtu$"
+            Environment="DOCKER_OPTS=--registry-mirror=https://$hostname$.$domain$"
+        - name: 10-wait-docker.conf
+          content: |
+            [Unit]
+            After=var-lib-docker.mount
+            Requires=var-lib-docker.mount
     - name: docker-registry.service
       command: start
       content: |
@@ -193,18 +240,38 @@ coreos:
         ExecStop=/usr/bin/docker rm -f registry
         [Install]
         WantedBy=multi-user.target
-    - name: docker.service
-      drop-ins:
-        - name: 09-opts-docker.conf
-          content: |
-            [Service]
-            Environment="DOCKER_OPT_MTU=--mtu=$mtu$"
-            Environment="DOCKER_OPTS=--registry-mirror=https://$hostname$.$domain$"
-        - name: 10-wait-docker.conf
-          content: |
-            [Unit]
-            After=var-lib-docker.mount
-            Requires=var-lib-docker.mount
+    - name: docker-registry-proxy.service
+      command: start
+      content: |
+        [Unit]
+        Description=Docker registry
+        After=docker.service docker-redis.service gen-cert-key.service
+        Requires=docker.service docker-redis.service gen-cert-key.service
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        TimeoutStartSec=0
+        ExecStartPre=/usr/bin/mkdir -p /etc/docker/certs.d/$hostname$.$domain$
+        ExecStartPre=/usr/bin/cp /home/root/registry_certs/docker-registry.crt /etc/docker/certs.d/$hostname$.$domain$/ca.crt
+        ExecStart=/run/docker-registry-proxy.sh
+        ExecStop=/usr/bin/docker rm -f registry-proxy
+        [Install]
+        WantedBy=multi-user.target
+    - name: docker-redis.service
+      command: start
+      content: |
+        [Unit]
+        Description=Docker redis
+        After=docker.service
+        Requires=docker.service
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        TimeoutStartSec=0
+        ExecStart=/run/docker-redis.sh
+        ExecStop=/usr/bin/docker rm -f redis
+        [Install]
+        WantedBy=multi-user.target
     - name: cfn-signal.service
       runtime: true
       command: start
