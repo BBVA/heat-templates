@@ -91,10 +91,6 @@ write_files:
           insecureskipverify: true
           region: $os_region$
           container: $os_swift_container$
-      auth:
-        htpasswd:
-          realm: basic-realm
-          path: /etc/htpasswd
       http:
         addr: :5000
         host: https://$hostname$.$domain$:5000
