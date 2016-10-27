@@ -1,6 +1,13 @@
 #cloud-config
 hostname: "$hostname$"
 write_files:
+  - path: "/etc/hosts"
+    permissions: "0644"
+    owner: "root"
+    content: |
+      # IPv4 and IPv6 localhost aliases
+      127.0.0.1       localhost $hostname$.$domain$
+      ::1             localhost
   - path: "/home/root/registry_certs/gencertkey.sh"
     permissions: "0755"
     owner: "root"
@@ -10,9 +17,8 @@ write_files:
         cd /home/root/registry_certs/
         /usr/bin/openssl req \
         -newkey rsa:4096 -nodes -sha256 \
-        -keyout docker-registry.key -x509 -days 1000 \
-        -subj "/C=ES/ST=MADRID/L=MADRID/O=BBVA/OU=EuroCloud/CN=$hostname$.$domain$" \
-        -out docker-registry.crt
+        -keyout docker-registry.key -x509 -days 1000 -out docker-registry.crt \
+        -subj "/C=ES/ST=MADRID/L=MADRID/O=BBVA/OU=EuroCloud/CN=$hostname$.$domain$"
       else
         echo "Skipping crt generation ... file /home/root/registry_certs/docker-registry.crt exists"
       fi
@@ -140,7 +146,7 @@ write_files:
     content: |
       #!/bin/bash
       /usr/bin/docker run -d -p 6379:6379 \
-      -v /var/lib/docker/redis/data:/data \
+      -v /data/redis:/data \
       -v /home/root/redis/redis.conf:/usr/local/etc/redis/redis.conf \
       --restart=always --name redis -d redis:3.2.4 redis-server /usr/local/etc/redis/redis.conf \
       --appendonly yes
@@ -151,7 +157,7 @@ write_files:
       #!/bin/bash
       /usr/bin/docker run -p 5000:5000 \
       -v /home/root/registry/registry-config.yml:/etc/docker/registry/config.yml \
-      -v /var/lib/docker/registry:/var/lib/registry \
+      -v /data/registry:/var/lib/registry \
       -v /home/root/registry_certs:/certs \
       --restart=always --name registry -d registry:2.5
   - path: "/run/docker-registry-proxy.sh"
@@ -160,8 +166,8 @@ write_files:
     content: |
       #!/bin/bash
       /usr/bin/docker run -p 443:5000 \
-      -v //home/root/registry/registry-proxy-config.yml:/etc/docker/registry/config.yml \
-      -v /var/lib/docker/registry:/var/lib/registry \
+      -v /home/root/registry/registry-proxy-config.yml:/etc/docker/registry/config.yml \
+      -v /data/registry-proxy:/var/lib/registry \
       -v /home/root/registry_certs:/certs \
       --restart=always --name registry-proxy -d registry:2.5
   - path: "/run/wcnotify.sh"
@@ -190,22 +196,22 @@ coreos:
         Description=Formats the ephemeral drive
         After=dev-vdb.device
         Requires=dev-vdb.device
-        ConditionPathExists=!/var/lib/docker/registry
+        ConditionPathExists=!/data
         [Service]
         Type=oneshot
         RemainAfterExit=yes
         ExecStart=/usr/sbin/wipefs -f /dev/vdb
         ExecStart=/usr/sbin/mkfs.ext4 -F /dev/vdb
-    - name: var-lib-docker.mount
+    - name: data.mount
       command: start
       content: |
         [Unit]
-        Description=Mount ephemeral to /var/lib/docker
+        Description=Mount ephemeral to /data
         Requires=format-ephemeral.service
         After=format-ephemeral.service
         [Mount]
         What=/dev/vdb
-        Where=/var/lib/docker
+        Where=/data
         Type=ext4
     - name: docker.service
       drop-ins:
@@ -217,42 +223,8 @@ coreos:
         - name: 10-wait-docker.conf
           content: |
             [Unit]
-            After=var-lib-docker.mount
-            Requires=var-lib-docker.mount
-    - name: docker-registry.service
-      command: start
-      content: |
-        [Unit]
-        Description=Docker registry
-        After=docker.service docker-redis.service gen-cert-key.service
-        Requires=docker.service docker-redis.service gen-cert-key.service
-        [Service]
-        Type=oneshot
-        RemainAfterExit=yes
-        TimeoutStartSec=0
-        ExecStartPre=/usr/bin/mkdir -p /etc/docker/certs.d/$hostname$.$domain$
-        ExecStartPre=/usr/bin/cp /home/root/registry_certs/docker-registry.crt /etc/docker/certs.d/$hostname$.$domain$/ca.crt
-        ExecStart=/run/docker-registry.sh
-        ExecStop=/usr/bin/docker rm -f registry
-        [Install]
-        WantedBy=multi-user.target
-    - name: docker-registry-proxy.service
-      command: start
-      content: |
-        [Unit]
-        Description=Docker registry
-        After=docker.service docker-redis.service gen-cert-key.service
-        Requires=docker.service docker-redis.service gen-cert-key.service
-        [Service]
-        Type=oneshot
-        RemainAfterExit=yes
-        TimeoutStartSec=0
-        ExecStartPre=/usr/bin/mkdir -p /etc/docker/certs.d/$hostname$.$domain$
-        ExecStartPre=/usr/bin/cp /home/root/registry_certs/docker-registry.crt /etc/docker/certs.d/$hostname$.$domain$/ca.crt
-        ExecStart=/run/docker-registry-proxy.sh
-        ExecStop=/usr/bin/docker rm -f registry-proxy
-        [Install]
-        WantedBy=multi-user.target
+            After=data.mount
+            Requires=data.mount
     - name: docker-redis.service
       command: start
       content: |
@@ -266,6 +238,40 @@ coreos:
         TimeoutStartSec=0
         ExecStart=/run/docker-redis.sh
         ExecStop=/usr/bin/docker rm -f redis
+        [Install]
+        WantedBy=multi-user.target
+    - name: docker-registry-proxy.service
+      command: start
+      content: |
+        [Unit]
+        Description=Docker registry proxy
+        After=docker.service docker-redis.service gen-cert-key.service
+        Requires=docker.service docker-redis.service gen-cert-key.service
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        TimeoutStartSec=0
+        ExecStartPre=/usr/bin/mkdir -p /etc/docker/certs.d/$hostname$.$domain$
+        ExecStartPre=/usr/bin/cp /home/root/registry_certs/docker-registry.crt /etc/docker/certs.d/$hostname$.$domain$/ca.crt
+        ExecStart=/run/docker-registry-proxy.sh
+        ExecStop=/usr/bin/docker rm -f registry-proxy
+        [Install]
+        WantedBy=multi-user.target
+    - name: docker-registry.service
+      command: start
+      content: |
+        [Unit]
+        Description=Docker registry
+        After=docker.service docker-redis.service gen-cert-key.service
+        Requires=docker.service docker-redis.service gen-cert-key.service
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        TimeoutStartSec=0
+        ExecStartPre=/usr/bin/mkdir -p /etc/docker/certs.d/$hostname$.$domain$:5000
+        ExecStartPre=/usr/bin/cp /home/root/registry_certs/docker-registry.crt /etc/docker/certs.d/$hostname$.$domain$:5000/ca.crt
+        ExecStart=/run/docker-registry.sh
+        ExecStop=/usr/bin/docker rm -f registry
         [Install]
         WantedBy=multi-user.target
     - name: cfn-signal.service
