@@ -97,6 +97,8 @@ write_files:
           insecureskipverify: true
           region: $os_region$
           container: $os_swift_container$
+        redirect:
+          disable: true
       http:
         addr: :5000
         host: https://$hostname$.$domain$:5000
