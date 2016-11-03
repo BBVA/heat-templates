@@ -13,14 +13,19 @@ write_files:
     owner: "root"
     content: |
       #!/bin/bash
-      if [ ! -f /home/root/registry_certs/docker-registry.crt ]; then
-        cd /home/root/registry_certs/
+      REGISTRY_CA="$registry_ca$"
+      REGISTRY_KEY="$registry_key$"
+      cd /home/root/registry_certs/
+      if [[ ! -z "$REGISTRY_CA" &&  ! -z "$REGISTRY_KEY" ]];then
+        echo "Copying REGISTRY_CA and REGISTRY_KEY to files in /home/root/registry_certs/"
+        echo $REGISTRY_CA > docker-registry.crt
+        echo $REGISTRY_KEY > docker-registry.key
+      elif [ ! -f /home/root/registry_certs/docker-registry.crt ]; then
+        echo "Creating crt and key files into /home/root/registry_certs/"
         /usr/bin/openssl req \
         -newkey rsa:4096 -nodes -sha256 \
         -keyout docker-registry.key -x509 -days 1000 -out docker-registry.crt \
         -subj "/C=ES/ST=MADRID/L=MADRID/O=BBVA/OU=EuroCloud/CN=$hostname$.$domain$"
-      else
-        echo "Skipping crt generation ... file /home/root/registry_certs/docker-registry.crt exists"
       fi
   - path: "/home/root/redis/redis.conf"
     permissions: "0644"
