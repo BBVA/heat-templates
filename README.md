@@ -1,9 +1,16 @@
-# HEAT TEMPLATES :: INNOCLOUD BBVA
+# Heat Templates
 
-This project contains some examples of heat templates which could work fine in our OpenStack environment.
+This project contains some examples of heat templates.
 
+Summary : 
 
+* [scaling](scaling/README.md)
+* [docker-plugin](docker-plugin/README.md)
+* [docker-registry-proxy](docker-registry-proxy/README.md)
+* [docker-openshift-standalone](docker-openshift-standalone/README.md)
 
-## Requirements
+## About us
 
-Please contact support team in order to get the needed roles for user accounts in your tenants.
+We are a bunch of people which love OpenStack and trust in open source and the power of collaboration.
+
+Please contact [support team](eurocloud-oneteam.group@bbva.com) in order to get more details or whatever you want.
