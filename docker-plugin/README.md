@@ -1,4 +1,4 @@
-# HEAT TEMPLATES :: DOCKER
+# Docker plugin
 
 Docker containers and VMs by just one stack definition , all together in the mix
 
@@ -6,4 +6,4 @@ Docker containers and VMs by just one stack definition , all together in the mix
 
 ## Requirements
 
-This templates require the heat contrib extension for docker containers
+This templates require the [heat contrib extension for docker containers](https://github.com/openstack/heat/tree/master/contrib/heat_docker)
