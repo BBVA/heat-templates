@@ -25,6 +25,31 @@ parameters:
     hidden: true
     default: ''
 
+  registry_http_username:
+    type: string
+    description: Http username.
+    default: ''
+
+  registry_http_password:
+    type: string
+    description: Http password.
+    hidden: true
+    default: ''
+
+  registry_ca:
+    type: string
+    description: >
+      Certificate authority that signed
+      the registry certificate
+    hidden: true
+    default: ''
+
+  registry_key:
+    type: string
+    description: Client key
+    hidden: true
+    default: ''
+
   docker_mtu:
     type: number
     description: MTU.
