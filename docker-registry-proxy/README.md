@@ -6,9 +6,9 @@ Within this stack template we could deploy a docker host as docker registry and 
 
 In the docker host we'll have three services running : 
 
-* docker-redis : Default proxy cache storage. This service runs a local docker container within Redis
-* docker-registry : The docker registry, 
-* docker-registry-proxy
+* docker-redis : Default proxy cache storage (Redis by default). 
+* docker-registry : The docker registry (Swift as default storage)
+* docker-registry-proxy: The docker registry run as pull through cache
 
 ## Creating the stack
 
@@ -38,22 +38,90 @@ $ heat stack-create -f heat_registry_proxy -P hostname=myhost -P domain=mydomain
 We prefer to use environment files to specify params, in this case the command would be like this:
 
 ```
-$ heat stack-create -e my_env.yml -f heat_registry_proxy.yml
+$ heat stack-create -e env_params.yml -f heat_registry_proxy.yml
 ```
 
 Where the contents of env file is :
 
 ```
+parameters:
+  hostname: myhost
+  domain: mydomain.com
+  server_key: mykey
+  server_flavor: m1.small
+  server_image=CoreOS
+  fip_network: pool-1
+  os_username: engapa
+  os_password: xxxxx
+  os_region: Spain_Mad
+  os_authurl=https://identity:5000/v2
+```
 
+## Use pre-defined certificate
+
+If you have crt and key files for the registry host then we can provide it to the stack by adding following options at the command above:
+
+```
+$ heat stack-create -e env_params.yml -Pf registry_ca=my_ca.crt -Pf registry_key=my_key.key -f heat_registry_proxy.yml
 ```
 
 ## Configure docker registry clients:
 
-TODO
+If you want to use a registry as a pull through cache the you have to add this option to docker service (daemon) : 
+
+```
+--registry-mirror=https://<docker-registry-host>
+```
+
+And finally, before restart, add the ca.crt file to *<code>/etc/docker/certs.d/\<docker-registry-host\></code>* and *<code>/etc/docker/certs.d/\<docker-registry-host\>:5000</code>* directories.
+
+To verify everything work fine let's try to do a pull of an image from two docker host configured as we said before (suppose that our registry is docker-registry.eurocloud.es):
+
+```
+registry-client2 ~ # time docker pull node
+Using default tag: latest
+latest: Pulling from library/node
+...
+Digest: sha256:d375100a63e67658f2b7420c56910d2bcc1ba0f1ae7b769e4a54db07a6c6a763
+Status: Downloaded newer image for node:latest
+
+real	2m8.628s
+user	0m0.099s
+sys	0m0.029s
+
+registry-client2 ~ # curl -k https://docker-registry.eurocloud.es/v2/_catalog
+{"repositories":["library/node"]}
+```
+
+From other docker host :
+```
+registry-client3 ~ # time docker pull node
+Using default tag: latest
+latest: Pulling from library/node
+...
+Digest: sha256:d375100a63e67658f2b7420c56910d2bcc1ba0f1ae7b769e4a54db07a6c6a763
+Status: Downloaded newer image for node:latest
+
+real	0m23.878s
+user	0m0.057s
+sys	0m0.045s
+``` 
+
+Now we're going to do a push to our registry:  
+
+```
+registry-client3 ~ # docker login docker-registry.eurocloud.es:5000
+registry-client3 ~ # docker tag node docker-registry.eurocloud.es:5000/node
+registry-client3 ~ # docker push docker-registry.eurocloud.es:5000/node
+```
+
+This image can be found by Swift panel at Horizon (Openstack dashboard) for instance : 
+
+![alt text](assets/swift.png "Docker registry on Swift")
 
 ## Requirements
 
-You need a openstack swift account , in other case feel free to change the config file to change the storage backend
+You need a openstack swift account , in other case feel free to change the [config file](files/coreos/cloud-config.yaml).
 
 ## TODO
 

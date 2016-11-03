@@ -63,24 +63,19 @@ parameters:
 
   server_image:
     type: string
-    default: "CoreOS-1068.6.0"
     description: Glance image used to boot the server
     constraints:
-    - allowed_values: ["CoreOS-1068.6.0"]
     - custom_constraint: glance.image
 
   server_flavor:
     type: string
-    default: m1.medium
     description: Server flavor
     constraints:
     - custom_constraint: nova.flavor
 
   fip_network:
     type: string
-    default: PUBLIC-ACCESS-POOL-2
     constraints:
-    - allowed_values: ['PUBLIC-ACCESS-POOL-1', 'PUBLIC-ACCESS-POOL-2']
     - custom_constraint: neutron.network
     description: Pool of floating ip addresses
 
@@ -106,12 +101,10 @@ parameters:
   os_region:
     type: string
     description: Name of swift container.
-    default: Spain_Mad
 
   os_authurl:
     type: string
     description: Auth URL, endpoint of identity service.
-    default: https://7cLJG9372wns497cT2d97PuRO.cloud.bbva.com/v2.0
 
 resources:
 
@@ -151,7 +144,7 @@ resources:
       group: ungrouped
       config:
         str_replace:
-          template: { get_file: files/registry/coreos/cloud-config.yaml }
+          template: { get_file: files/coreos/cloud-config.yaml }
           params:
             "$hostname$": { get_param: hostname }
             "$domain$": { get_param: domain }
@@ -165,6 +158,10 @@ resources:
             "$secret$": { get_attr: [ secret, value ] }
             "$registry_username$": { get_param: registry_username }
             "$registry_password$": { get_param: registry_password }
+            "$registry_http_username$": { get_param: registry_username }
+            "$registry_http_password$": { get_param: registry_password }
+            "$registry_ca$": { get_param: registry_ca}
+            "$registry_key$": { get_param: registry_key }
             "$mtu$": { get_param: docker_mtu }
             "$wc_notify$": { get_attr: [ wait_handle, curl_cli ] }
 
