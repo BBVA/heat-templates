@@ -1,0 +1,97 @@
+heat_template_version: 2013-05-23
+
+description: >
+  This template will create a VM (docker host) and places an OpenShift docker container
+  inside.
+
+parameters:
+
+  server_key:
+    type: string
+    description: name of ssh key to be provisioned on our server
+
+  server_image:
+    type: string
+    default: CentOS_7.2_1606_20160705
+    description: glance image used to boot the server
+    constraints:
+      - allowed_values: ["CentOS_7.2_1606_20160705"]
+      - custom_constraint: glance.image
+
+  server_flavor:
+    type: string
+    default: m1.small
+    constraints:
+      - allowed_values: ["m1.small", "m1.medium"]
+      - custom_constraint: nova.flavor
+    description: server flavor
+
+  fip_network:
+    type: string
+    default: PUBLIC-ACCESS-POOL-2
+    constraints:
+      - allowed_values: ["PUBLIC-ACCESS-POOL-1", "PUBLIC-ACCESS-POOL-2"]
+      - custom_constraint: neutron.network
+    description: pool of floating ip addresses
+
+resources:
+
+  wait_handle:
+    type: OS::Heat::WaitConditionHandle
+
+  wait_condition:
+    type: OS::Heat::WaitCondition
+    properties:
+      handle: { get_resource: wait_handle }
+      timeout: 10000
+
+  server:
+    type: OS::Nova::Server
+    properties:
+      image: { get_param: server_image }
+      flavor: { get_param: server_flavor }
+      key_name: {get_param: server_key }
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: |
+            #cloud-config
+            bootcmd:
+             - curl -fsSL https://get.docker.com/ | sh
+             - systemctl --no-block start docker
+             - systemctl enable docker.service
+            runcmd:
+             - docker run -d --name "origin" \
+                --privileged --pid=host --net=host \
+                -v /:/rootfs:ro \
+                -v /var/run:/var/run:rw \
+                -v /sys:/sys \
+                -v /var/lib/docker:/var/lib/docker:rw \
+                -v /var/lib/origin/openshift.local.volumes:/var/lib/origin/openshift.local.volumes \
+                openshift/origin start
+             - $WC_NOTIFY$ --data-binary '{\"status\": \"SUCCESS\"}'
+          params:
+            $WC_NOTIFY$: { get_attr: ['wait_handle', 'curl_cli'] }
+
+  floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+       floating_network: { get_param: fip_network }
+
+  floating_ip_association:
+    type: OS::Nova::FloatingIPAssociation
+    properties:
+      floating_ip: { get_resource: floating_ip }
+      server_id: { get_resource: server }
+
+outputs:
+  wc_data:
+    value: { get_attr: [wait_condition, data] }
+  openshift:
+    description: OpenShift Console available at :Server addresses
+    value:
+      str_replace:
+        template: |
+          $fip$:8443
+        params:
+          $fip$: { get_attr: [ floating_ip, floating_ip_address ] }
