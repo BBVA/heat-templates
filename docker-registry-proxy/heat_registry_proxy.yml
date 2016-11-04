@@ -36,20 +36,6 @@ parameters:
     hidden: true
     default: ''
 
-  registry_ca:
-    type: string
-    description: >
-      Certificate authority that signed
-      the registry certificate
-    hidden: true
-    default: ''
-
-  registry_key:
-    type: string
-    description: Client key
-    hidden: true
-    default: ''
-
   docker_mtu:
     type: number
     description: MTU.
@@ -158,10 +144,8 @@ resources:
             "$secret$": { get_attr: [ secret, value ] }
             "$registry_username$": { get_param: registry_username }
             "$registry_password$": { get_param: registry_password }
-            "$registry_http_username$": { get_param: registry_username }
-            "$registry_http_password$": { get_param: registry_password }
-            "$registry_ca$": { get_param: registry_ca}
-            "$registry_key$": { get_param: registry_key }
+            "$registry_http_username$": { get_param: registry_http_username }
+            "$registry_http_password$": { get_param: registry_http_password }
             "$mtu$": { get_param: docker_mtu }
             "$wc_notify$": { get_attr: [ wait_handle, curl_cli ] }
 

@@ -117,8 +117,15 @@ Now we're going to do a push to our registry:
 
 ```
 registry-client3 ~ # docker login docker-registry.eurocloud.es:5000
+Username: engapa
+Password:
+Email:
+WARNING: login credentials saved in /root/.docker/config.json
+Login Succeeded
 registry-client3 ~ # docker tag node docker-registry.eurocloud.es:5000/node
 registry-client3 ~ # docker push docker-registry.eurocloud.es:5000/node
+
+
 ```
 
 This image can be found by Swift panel at Horizon (Openstack dashboard) for instance : 
