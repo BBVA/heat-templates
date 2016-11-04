@@ -8,7 +8,7 @@ In the docker host we'll have three services running :
 
 * docker-redis : Default proxy cache storage (Redis by default). 
 * docker-registry : The docker registry (Swift as default storage)
-* docker-registry-proxy: The docker registry run as pull through cache
+* docker-registry-proxy: The docker registry runs as pull through cache
 
 ## Creating the stack
 
@@ -57,17 +57,23 @@ parameters:
   os_authurl: https://identity:5000/v2
 ```
 
-## Use pre-defined certificate
+Once stack is ready ca.crt and key files are available at <code>/home/root/registry_certs/</code> .
 
-If you have crt and key files for the registry host then we can provide it to the stack by adding following options at the command above:
+## Use pre-defined certificates
+
+If you have your own crt and key files then put then in directory <code>/home/root/registry_certs/</code> replacing auto-generated ones before.
+To apply certificate changes restart services : 
 
 ```
-$ heat stack-create -e env_params.yml -Pf registry_ca=my_ca.crt -Pf registry_key=my_key.key -f heat_registry_proxy.yml docker_registry
+# systemctl restart docker-registry
+# systemctl restart docker-registry-proxy
 ```
+
+Also we could change the cloud-config file to remove service **gen-cert-key** and add two "write_files" entries for your key and crt files.
 
 ## Configure docker registry clients:
 
-If you want to use a registry as a pull through cache the you have to add this option to docker service (daemon) : 
+If you want to use a registry as a pull through cache then you have to add this option to docker service (daemon) : 
 
 ```
 --registry-mirror=https://<docker-registry-host>
