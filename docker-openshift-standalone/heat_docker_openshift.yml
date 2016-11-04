@@ -88,7 +88,7 @@ outputs:
   wc_data:
     value: { get_attr: [wait_condition, data] }
   openshift:
-    description: OpenShift Console available at :Server addresses
+    description: OpenShift Web Console
     value:
       str_replace:
         template: |
