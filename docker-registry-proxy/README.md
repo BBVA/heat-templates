@@ -38,7 +38,7 @@ $ heat stack-create -f heat_registry_proxy -P hostname=myhost -P domain=mydomain
 We prefer to use environment files to specify params, in this case the command would be like this:
 
 ```
-$ heat stack-create -e env_params.yml -f heat_registry_proxy.yml
+$ heat stack-create -e env_params.yml -f heat_registry_proxy.yml docker_registry
 ```
 
 Where the contents of env file is :
@@ -49,12 +49,12 @@ parameters:
   domain: mydomain.com
   server_key: mykey
   server_flavor: m1.small
-  server_image=CoreOS
+  server_image: CoreOS
   fip_network: pool-1
   os_username: engapa
   os_password: xxxxx
   os_region: Spain_Mad
-  os_authurl=https://identity:5000/v2
+  os_authurl: https://identity:5000/v2
 ```
 
 ## Use pre-defined certificate
@@ -62,7 +62,7 @@ parameters:
 If you have crt and key files for the registry host then we can provide it to the stack by adding following options at the command above:
 
 ```
-$ heat stack-create -e env_params.yml -Pf registry_ca=my_ca.crt -Pf registry_key=my_key.key -f heat_registry_proxy.yml
+$ heat stack-create -e env_params.yml -Pf registry_ca=my_ca.crt -Pf registry_key=my_key.key -f heat_registry_proxy.yml docker_registry
 ```
 
 ## Configure docker registry clients:
