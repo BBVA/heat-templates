@@ -1,5 +1,9 @@
 #cloud-config
 hostname: "$hostname$"
+runcmd:
+  - echo never > /sys/kernel/mm/transparent_hugepage/enabled
+  - echo 511 > /proc/sys/net/core/somaxconn
+  - echo "vm.overcommit_memory = 1" >> /etc/sysctl.conf
 write_files:
   - path: "/etc/hosts"
     permissions: "0644"
@@ -29,6 +33,7 @@ write_files:
     content: |
       protected-mode yes
       port 6379
+      bind 127.0.0.1
       tcp-backlog 511
       timeout 0
       tcp-keepalive 300
@@ -89,7 +94,7 @@ write_files:
           service: registry
       storage:
         cache:
-          layerinfo: inmemory
+          blobdescriptor: redis
         swift:
           username: $os_username$
           password: $os_password$
@@ -107,6 +112,17 @@ write_files:
         tls:
           certificate: /certs/docker-registry.crt
           key: /certs/docker-registry.key
+      redis:
+        addr: $hostname$.$domain$:6379
+        password: $redis_password$
+        db: 1
+        dialtimeout: 10ms
+        readtimeout: 10ms
+        writetimeout: 10ms
+        pool:
+          maxidle: 16
+          maxactive: 64
+          idletimeout: 300s
   - path: "/home/root/registry/registry-proxy-config.yml"
     permissions: "0644"
     owner: "root"
