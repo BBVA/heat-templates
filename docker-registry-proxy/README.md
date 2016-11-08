@@ -138,4 +138,4 @@ You need a openstack swift account , in other case feel free to change the [conf
 
 ## TODO
 
-Use Designate resource of heat to add a record with <hostname>.<domain>
+Use Designate resource of heat to add a record with <code>\<hostname\>.\<domain\></code>
