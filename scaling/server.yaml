@@ -1,0 +1,51 @@
+heat_template_version: 2014-10-16
+
+parameters:
+  image:
+    type: string
+    description: >
+      Name or ID of the image registered with Glance
+    default: cirros
+    constraints:
+      - custom_constraint: glance.image
+
+  keypair:
+    type: string
+    description: >
+      Name of the SSH keypair registered with Nova
+    constraints:
+    - custom_constraint: nova.keypair
+
+  flavor:
+    type: string
+    description: >
+      The flavor to use for the vm instances
+    default: m1.tiny
+    constraints:
+      - allowed_values: ["m1.tiny", "m1.small", "m1.medium"]
+      - custom_constraint: nova.flavor
+
+  network:
+    type: string
+    description: >
+      The network that instance is attached to.
+    constraints:
+    - custom_constraint: neutron.network
+
+  metadata:
+    type: json
+
+resources:
+  server:
+    type: OS::Nova::Server
+    properties:
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: { get_param: keypair }
+      networks:
+            - network: { get_param: network }
+      metadata: { get_param: "metadata" }
+      #user_data_format: RAW
+      #user_data: |
+       #!/bin/sh
+       #while [ 1 ] ; do echo $((13**99)) 1>/dev/null 2>&1; done

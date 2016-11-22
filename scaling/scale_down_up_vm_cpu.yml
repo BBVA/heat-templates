@@ -9,32 +9,21 @@ parameters:
     type: string
     description: >
       Name or ID of the image registered with Glance
-    default: cirros
-    constraints:
-      - custom_constraint: glance.image
 
   keypair:
     type: string
     description: >
       Name of the SSH keypair registered with Nova
-    constraints:
-    - custom_constraint: nova.keypair
 
   flavor:
     type: string
     description: >
       The flavor to use for the vm instances
-    default: m1.tiny
-    constraints:
-      - allowed_values: ["m1.tiny", "m1.small", "m1.medium"]
-      - custom_constraint: nova.flavor
 
   network:
     type: string
     description: >
-      The network that instance is attached to.
-    constraints:
-    - custom_constraint: neutron.network
+      The network where instance is attached to.
 
   cooldown:
     type: number
@@ -105,18 +94,13 @@ resources:
       max_size: { get_param: max_size }
       min_size: { get_param: min_size }
       resource:
-        type: OS::Nova::Server
+        type: OOScaling::MyServer
         properties:
           image: { get_param: image }
           flavor: { get_param: flavor }
-          key_name: { get_param: keypair }
-          networks:
-            - network: { get_param: network }
-          metadata: { "metering.stack": { get_param: "OS::stack_id" } }
-          #user_data_format: RAW
-          #user_data: |
-             #!/bin/sh
-             #while [ 1 ] ; do echo $((13**99)) 1>/dev/null 2>&1; done
+          keypair: { get_param: keypair }
+          network: { get_param: network }
+          metadata: {"metering.stack": {get_param: "OS::stack_id"}}
 
   scale_down_policy:
     type: OS::Heat::ScalingPolicy
