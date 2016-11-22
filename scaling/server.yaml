@@ -43,7 +43,7 @@ resources:
       flavor: { get_param: flavor }
       key_name: { get_param: keypair }
       networks:
-            - network: { get_param: network }
+        - network: { get_param: network }
       metadata: { get_param: "metadata" }
       #user_data_format: RAW
       #user_data: |
