@@ -57,20 +57,12 @@ resources:
     type: OS::Heat::CloudConfig
     properties:
       cloud_config:
-        runcmd:
+        bootcmd:
          - curl -fsSL https://get.docker.com/ | sh
          - systemctl --no-block start docker
          - systemctl enable docker.service
-        bootcmd:
-         - >
-             docker run -d --name "origin"
-             --privileged --pid=host --net=host
-             -v /:/rootfs:ro
-             -v /var/run:/var/run:rw
-             -v /sys:/sys
-             -v /var/lib/docker:/var/lib/docker:rw
-             -v /var/lib/origin/openshift.local.volumes:/var/lib/origin/openshift.local.volumes
-             openshift/origin start
+        runcmd:
+         - docker run -d --name "origin" --privileged --pid=host --net=host -v /:/rootfs:ro -v /var/run:/var/run:rw -v /sys:/sys -v /var/lib/docker:/var/lib/docker:rw -v /var/lib/origin/openshift.local.volumes:/var/lib/origin/openshift.local.volumes openshift/origin start
 
   wc_notifier_config:
     type: OS::Heat::SoftwareConfig
