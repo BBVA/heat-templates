@@ -26,7 +26,6 @@ parameters:
       The flavor to use for the vm instances
     default: m1.small
     constraints:
-      - allowed_values: ["m1.small", "m1.medium"]
       - custom_constraint: nova.flavor
 
   network:
