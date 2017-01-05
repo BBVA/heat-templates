@@ -8,6 +8,7 @@ Summary :
 * [docker-plugin](docker-plugin/README.md)
 * [docker-registry-proxy](docker-registry-proxy/README.md)
 * [docker-openshift-standalone](docker-openshift-standalone/README.md)
+* [k8stack](k8stack/README.md)
 
 ## About us
 
