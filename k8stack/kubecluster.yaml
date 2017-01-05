@@ -14,6 +14,12 @@ parameters:
     description: uuid/name of a network to use for floating ip addresses
     default: public
 
+  network_id:
+    type: string
+    description: network
+    constraints:
+    - custom_constraint: neutron.network
+
   lbaas_version:
     type: string
     description: version of OpenStack LBaaS service. not specifying means auto detect
@@ -46,11 +52,6 @@ parameters:
     type: number
     description: maximum number of kubernetes minions to spawn
     default: 10
-
-  fixed_network_cidr:
-    type: string
-    description: network range for fixed ip network
-    default: 10.0.0.0/24
 
   cluster_cidr:
     type: string
@@ -172,66 +173,6 @@ resources:
 
   ######################################################################
   #
-  # network resources.  allocate a network and router for our server.
-  #
-
-  fixed_network:
-    type: OS::Neutron::Net
-
-  fixed_subnet:
-    type: OS::Neutron::Subnet
-    properties:
-      cidr: {get_param: fixed_network_cidr}
-      network: {get_resource: fixed_network}
-      dns_nameservers:
-        - {get_param: dns_nameserver}
-
-  extrouter:
-    type: OS::Neutron::Router
-    properties:
-      external_gateway_info:
-        network: {get_param: external_network}
-
-  extrouter_inside:
-    type: OS::Neutron::RouterInterface
-    properties:
-      router_id: {get_resource: extrouter}
-      subnet: {get_resource: fixed_subnet}
-
-  ######################################################################
-  #
-  # security groups.  we need to permit network traffic of various
-  # sorts.
-  #
-
-  secgroup_base:
-    type: OS::Neutron::SecurityGroup
-    properties:
-      rules:
-        - protocol: icmp
-        - protocol: tcp
-          port_range_min: 22
-          port_range_max: 22
-        - remote_mode: remote_group_id
-
-  secgroup_master:
-    type: OS::Neutron::SecurityGroup
-    properties:
-      rules:
-        - protocol: tcp # api-server
-          port_range_min: 443
-          port_range_max: 443
-
-  secgroup_node:
-    type: OS::Neutron::SecurityGroup
-    properties:
-      rules:
-        - protocol: icmp
-        - protocol: tcp
-        - protocol: udp
-
-  ######################################################################
-  #
   # software configs.  these are components that are combined into
   # a multipart MIME user-data archive.
   #
@@ -242,11 +183,11 @@ resources:
       group: ungrouped
       config:
         str_replace:
-          template: {get_file: fragments/write-heat-params.yaml}
+          template: { get_file: fragments/write-heat-params.yaml }
           params:
-            "$KUBERNETES_SERVER_URL": {get_param: kubernetes_server_url}
-            "$KUBERNETES_SALT_URL": {get_param: kubernetes_salt_url}
-            "$MASTER_IP": {get_attr: [kube_master_eth0, fixed_ips, 0, ip_address]}
+            "$KUBERNETES_SERVER_URL": { get_param: kubernetes_server_url }
+            "$KUBERNETES_SALT_URL": { get_param: kubernetes_salt_url }
+            "$MASTER_IP": { get_attr: [kube_master_eth0, fixed_ips, 0, ip_address] }
 
   proxy_config:
     type: OS::Heat::SoftwareConfig
@@ -315,12 +256,10 @@ resources:
             "$OS_REGION_NAME": {get_param: os_region_name}
             "$OS_TENANT_ID": {get_param: os_tenant_id}
             "$LBAAS_VERSION": {get_param: lbaas_version}
-            "$SUBNET_ID": {get_resource: fixed_subnet}
             "$FLOATING_NETWORK_ID": {get_attr: [kube_master_floating, floating_network_id]}
             "$role": "kubernetes-master"
-            "$router_id": {get_resource: extrouter}
             "$cluster_cidr": {get_param: cluster_cidr}
-            "$MASTER_IP_RANGE": {get_param: master_pod_cidr}
+            "$MASTER_CBR_CIDR": {get_param: master_pod_cidr}
 
   run_salt:
     type: OS::Heat::SoftwareConfig
@@ -353,8 +292,6 @@ resources:
 
   kube_master:
     type: OS::Nova::Server
-    depends_on:
-      - extrouter_inside
     properties:
       image: {get_param: server_image}
       flavor: {get_param: master_flavor}
@@ -369,14 +306,9 @@ resources:
   kube_master_eth0:
     type: OS::Neutron::Port
     properties:
-      network: {get_resource: fixed_network}
-      security_groups:
-        - {get_resource: secgroup_base}
-        - {get_resource: secgroup_master}
-      fixed_ips:
-        - subnet: {get_resource: fixed_subnet}
-      allowed_address_pairs:
-        - ip_address: 10.246.0.0/16
+      network_id: {get_param: network_id }
+#      allowed_address_pairs:
+#        - ip_address: 10.246.0.0/16
       replacement_policy: AUTO
 
   kube_master_floating:
@@ -395,7 +327,6 @@ resources:
   kube_minions:
     type: OS::Heat::AutoScalingGroup
     depends_on:
-      - extrouter_inside
       - master_wait_condition
     properties:
       resource:
@@ -405,19 +336,16 @@ resources:
           kubernetes_salt_url: {get_param: kubernetes_salt_url}
           ssh_key_name: {get_param: ssh_key_name}
           server_image: {get_param: server_image}
+          network_id: {get_param: network_id }
           minion_flavor: {get_param: minion_flavor}
           token_kubelet: {get_param: token_kubelet}
           token_kube_proxy: {get_param: token_kube_proxy}
-          fixed_network: {get_resource: fixed_network}
-          fixed_subnet: {get_resource: fixed_subnet}
           cluster_cidr: {get_param: cluster_cidr}
           kube_master_ip: {get_attr: [kube_master_eth0, fixed_ips, 0, ip_address]}
           external_network: {get_param: external_network}
           wait_condition_timeout: {get_param: wait_condition_timeout}
           metadata: {"metering.stack": {get_param: "OS::stack_id"}}
           cluster_name: {get_param: "OS::stack_name"}
-          secgroup_base: {get_resource: secgroup_base}
-          secgroup_node: {get_resource: secgroup_node}
           os_auth_url: {get_param: os_auth_url}
           os_username: {get_param: os_username}
           os_password: {get_param: os_password}

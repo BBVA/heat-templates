@@ -25,6 +25,10 @@ parameters:
     type: string
     description: uuid/name of a network to use for floating ip addresses
 
+  network_id:
+    type: string
+    description: network
+
   kubernetes_server_url:
     type: string
     description: URL of kubernetes server binary. Must be tar.gz.
@@ -100,12 +104,6 @@ parameters:
   kube_master_ip:
     type: string
     description: IP address of the Kubernetes master server.
-  fixed_network:
-    type: string
-    description: Network from which to allocate fixed addresses.
-  fixed_subnet:
-    type: string
-    description: Subnet from which to allocate fixed addresses.
   cluster_cidr:
     type: string
     description: Subnet from which to allocate pod subnets.
@@ -117,10 +115,6 @@ parameters:
     type: json
     description: metadata for ceilometer query
   cluster_name:
-    type: string
-  secgroup_base:
-    type: string
-  secgroup_node:
     type: string
 
 resources:
@@ -270,14 +264,9 @@ resources:
   kube_minion_eth0:
     type: OS::Neutron::Port
     properties:
-      network: {get_param: fixed_network}
-      security_groups:
-        - {get_param: secgroup_base}
-        - {get_param: secgroup_node}
-      fixed_ips:
-        - subnet: {get_param: fixed_subnet}
-      allowed_address_pairs:
-        - ip_address: 10.246.0.0/16
+      network: { get_param: network_id }
+#      allowed_address_pairs:
+#        - ip_address: 10.246.0.0/16
       replacement_policy: AUTO
 
   kube_minion_floating:
