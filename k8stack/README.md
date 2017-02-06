@@ -16,8 +16,8 @@ $ wget -q -O - https://get.k8s.io | bash
 ....
 $ cd kubernetes
 $ swift post k8s
-$ swift upload k8s kubernetes-server-linux-amd64.tar.gz
-$ swift upload k8s kubernetes-salt.tar.gz
+$ swift upload k8s server/kubernetes-server-linux-amd64.tar.gz
+$ swift upload k8s server/kubernetes-salt.tar.gz
 $ swift post --read-acl ".r:*" -m "Temp-URL-Key:Yz4ya9QemL9o7vnJDwGoUUecgGftGMqm" k8s
 $ swift tempurl GET 31536000 /v1/AUTH_7a9e9057554f459e8eee7e52ff1694da/k8s/kubernetes-salt.tar.gz Yz4ya9QemL9o7vnJDwGoUUecgGftGMqm
 $ swift tempurl GET 31536000 /v1/AUTH_7a9e9057554f459e8eee7e52ff1694da/k8s/kubernetes-server-linux-amd64.tar.gz Yz4ya9QemL9o7vnJDwGoUUecgGftGMqm
