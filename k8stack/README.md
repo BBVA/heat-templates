@@ -33,5 +33,5 @@ Use that URLs at env.yaml file for kubernetes_server_url and kubernetes_salt_url
 Finally create the heat stack by typing :
 
 ```
-$ heat create-stack -e env.yaml -f kubecluster.yaml k8stack
+$ heat stack-create -e env.yaml -f kubecluster.yaml k8stack
 ```
