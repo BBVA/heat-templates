@@ -175,7 +175,7 @@ write_files:
       REGISTRY_HTTP_AUTH=''
       if [[ ! -z "$REGISTRY_HTTP_USERNAME" &&  ! -z "$REGISTRY_HTTP_PASSWORD" ]];then
         if [ ! -f /home/root/registry/htpasswd ];then
-         docker run --entrypoint htpasswd registry:2.5 -Bbn $REGISTRY_HTTP_USERNAME $REGISTRY_HTTP_PASSWORD > /home/root/registry/htpasswd
+         docker run --entrypoint htpasswd registry:2 -Bbn $REGISTRY_HTTP_USERNAME $REGISTRY_HTTP_PASSWORD > /home/root/registry/htpasswd
         fi
         REGISTRY_HTTP_AUTH="-v /home/root/registry/htpasswd:/auth/htpasswd \
         -e REGISTRY_AUTH=htpasswd \
@@ -187,7 +187,7 @@ write_files:
       -v /data/registry:/var/lib/registry \
       -v /home/root/registry_certs:/certs \
       $(echo $REGISTRY_HTTP_AUTH) \
-      --restart=always --name registry -d registry:2.5
+      --restart=always --name registry -d registry:2
   - path: "/run/docker-registry-proxy.sh"
     permissions: "0755"
     owner: "root"
@@ -197,7 +197,7 @@ write_files:
       -v /home/root/registry/registry-proxy-config.yml:/etc/docker/registry/config.yml \
       -v /data/registry-proxy:/var/lib/registry \
       -v /home/root/registry_certs:/certs \
-      --restart=always --name registry-proxy -d registry:2.5
+      --restart=always --name registry-proxy -d registry:2
   - path: "/run/wcnotify.sh"
     permissions: "0755"
     owner: "root"
