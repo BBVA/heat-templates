@@ -15,4 +15,4 @@ Summary :
 
 We are a bunch of people which love OpenStack and trust in open source and the power of collaboration.
 
-Please contact [support team](mailto:eurocloud-oneteam.group@bbva.com) in order to get more details or whatever you want.
+Please contact [support team](mailto:enrique.garcia.pablos@bbva.com) in order to get more details or whatever you want.
