@@ -1,0 +1,186 @@
+heat_template_version: 2014-10-16
+
+
+description: >
+  Hadoop slave
+
+
+parameters:
+
+  key_name:
+    description: >
+      A pre-submitted SSH key to access the VM hosts
+    type: string
+    constraints:
+    - custom_constraint: nova.keypair
+
+  image:
+    description: >
+      Select a base image to use for the master servers
+    type: string
+    constraints:
+    - custom_constraint: glance.image
+
+  flavor:
+    description: >
+      Define the hardware characteristics for the VMs: CPU, Memory, base disk
+    type: string
+    constraints:
+    - custom_constraint: nova.flavor
+
+  volume_size:
+    description: >
+      Size of a cinder volume in GB
+    type: number
+    default: 25
+
+  hostname:
+    description: >
+      A string to identify slave hostnames.
+    type: string
+    constraints:
+    - allowed_pattern: '[a-z0-9\-]*'
+      description: Hostname must contain only characters [a-z0-9\-].
+
+  domain_name:
+    description: >
+      The DNS domain suffix. All VMs will be placed in this domain
+    type: string
+
+  ansible_public_key:
+    description: >
+      The SSH public key that Ansible will use to access master and slave hosts
+      This will be placed on each VM host in /root/.ssh/authorized_keys
+    type: string
+
+  ssh_user:
+    description: >
+      The user for SSH access to the VM hosts
+    type: string
+
+  timeout:
+    description: Time to wait until the master setup is ready.
+    type: number
+    default: 10800
+
+  ip_fwd:
+    description: >
+      The ip of the gw previously configured for ip forwarding
+    type: string
+
+  fixed_network:
+    description: >
+      The name or ID of the admin and public network
+    type: string
+    constraints:
+    - custom_constraint: neutron.network
+
+  fixed_subnet:
+    description: >
+      The name or ID of the admin and public IPv4 space
+    type: string
+    constraints:
+    - custom_constraint: neutron.subnet
+
+  mount_dir:
+    description: >
+      Mount directory
+    type: string
+
+resources:
+
+  port:
+    type: OS::Neutron::Port
+    properties:
+      security_groups:
+      - default
+      network: {get_param: fixed_network}
+      fixed_ips:
+      - subnet: {get_param: fixed_subnet}
+      replacement_policy: AUTO
+
+  slave:
+    type: OS::Nova::Server
+    properties:
+      name:
+        str_replace:
+          template: "HOST.DOMAIN"
+          params:
+            HOST: {get_param: hostname}
+            DOMAIN: {get_param: domain_name}
+      admin_user: {get_param: ssh_user}
+      image: {get_param: image}
+      flavor: {get_param: flavor}
+      key_name: {get_param: key_name}
+      networks:
+      - port: {get_resource: port}
+      user_data_format: SOFTWARE_CONFIG
+      user_data: {get_resource: init}
+
+  # Create space for Docker containers and images
+  volume:
+    type: OS::Cinder::Volume
+    properties:
+      size: {get_param: volume_size}
+
+  # Bind the docker storage to the VM
+  volume_attach:
+    type: OS::Cinder::VolumeAttachment
+    properties:
+      instance_uuid: {get_resource: slave}
+      volume_id: {get_resource: volume}
+
+  # Compose configuration data into a single structure
+  init:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+      - config: {get_resource: set_hostname}
+      - config: {get_resource: set_storage}
+      - config: {get_resource: config_ip_fwd}
+      - config: {get_resource: included_files}
+
+  # Compose the short hostname and fully qualified domain name for the new host
+  set_hostname:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        hostname: {get_param: hostname}
+        fqdn:
+          str_replace:
+            template: "HOST.DOMAIN"
+            params:
+              HOST: {get_param: hostname}
+              DOMAIN: {get_param: domain_name}
+
+  # Configure storage
+  set_storage:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      config:
+        str_replace:
+          template: {get_file: scripts/configure_storage.sh}
+          params:
+            "%volume_id%": { get_resource: volume }
+            "%mount_dir%": { get_param: mount_dir }
+
+  config_ip_fwd:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      config:
+        str_replace:
+          template: {get_file: scripts/ip_fwd.sh}
+          params:
+            "%ip%": {get_param: ip_fwd}
+
+  included_files:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        ssh_authorized_keys:
+        - {get_param: ansible_public_key}
+
+outputs:
+  instance_ip:
+    description: Instance private IP
+    value: {get_attr: [port, fixed_ips, 0, ip_address]}

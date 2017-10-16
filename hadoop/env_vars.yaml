@@ -1,0 +1,12 @@
+parameters:
+  external_network: PUBLIC-ACCESS-POOL-2
+  fixed_subnet: d3b59d8a-3608-42d5-93db-daf95c2f35ac
+  fixed_network: 0fd6b942-bc5c-4e25-9094-29616405f981
+  slave_image: CentOS_7.2_1611_20170117
+  master_image: CentOS_7.2_1611_20170117
+  domain_name: hosos.internal
+  ssh_user: user
+  bastion_image: CentOS_7.2_1611_20170117
+  ssh_key_name: keypair_name
+  mount_dir: /usr/local/hadoop/hadoop_data/hdfs/namenode
+  hadoop_ansible_git_url: https://git_url.git

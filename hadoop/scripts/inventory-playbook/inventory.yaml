@@ -1,0 +1,9 @@
+- hosts: localhost
+  connection: local
+  vars:
+  - master: %master%
+  - slaves: [ %slaves% ]
+  tasks:
+  - template:
+      src: inventory.j2
+      dest: /etc/ansible/inventory

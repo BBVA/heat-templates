@@ -1,0 +1,254 @@
+heat_template_version: 2014-10-16
+
+
+description: >
+  Deploy Hadoop Cluster on OpenStack.
+
+
+parameters:
+
+  hadoop_version:
+    type: string
+    default: "2.7.3"
+    description: >
+      The version of Hadoop
+
+  # Access to the VMs
+  ssh_user:
+    type: string
+    description: >
+      The SSH user available on all slaves.
+
+  ssh_key_name:
+    type: string
+    description: Name of the SSH keypair registered with Nova
+    constraints:
+    - custom_constraint: nova.keypair
+
+  bastion_image:
+    type: string
+    description: Name or ID of the bastion image registered with Glance
+    constraints:
+    - custom_constraint: glance.image
+
+  bastion_flavor:
+    type: string
+    description: The Nova flavor to use for the bastion slave
+    default: m1.medium
+    constraints:
+    - custom_constraint: nova.flavor
+
+  master_image:
+    type: string
+    description: Master image
+    constraints:
+    - custom_constraint: glance.image
+
+  slave_image:
+    type: string
+    description: slave image
+    constraints:
+    - custom_constraint: glance.image
+
+  master_flavor:
+    type: string
+    description: The Nova flavor to use for the masters
+    default: m1.medium
+    constraints:
+    - custom_constraint: nova.flavor
+
+  slave_flavor:
+    type: string
+    description: The Nova flavor to use for the slaves
+    default: m1.medium
+    constraints:
+    - custom_constraint: nova.flavor
+
+  # Networks to connect to or create
+  external_network:
+    type: string
+    description: >
+      The external network that provides floating IP addresses for the slaves
+    constraints:
+    - custom_constraint: neutron.network
+
+  fixed_network:
+    type: string
+    description: >
+      The private network
+    constraints:
+    - custom_constraint: neutron.network
+
+  fixed_subnet:
+    type: string
+    description: >
+      The private subnet
+    constraints:
+    - custom_constraint: neutron.subnet
+
+  slave_count:
+    type: number
+    description: >
+      Number of slaves or slaves to create.
+    default: 2
+
+  domain_name:
+    type: string
+    description: >
+      The domain name that is going to be used as the base for all hostnames.
+
+  bastion_hostname:
+    type: string
+    description: >
+      The hostname that is going to be set for the dedicated bastion slave.
+    default: 'bastion'
+
+  master_hostname:
+    type: string
+    description: >
+      The hostname that is going to be set for master slaves.
+    default: "master"
+
+  slave_hostname:
+    type: string
+    description: >
+      The hostname that is going to be set for slave slaves.
+    default: "slave"
+
+  slave_volume_size_gb:
+    type: number
+    description: >
+      size of a cinder volume in GB to allocate to docker for container/image
+      storage
+    default: 25
+
+  mount_dir:
+    type: string
+    description: Mount directory
+
+  hadoop_ansible_git_url:
+    type: string
+    description: >
+      The URL to the git repository with the ansible resources
+      to deploy a hadoop cluster.
+
+  hadoop_ansible_git_rev:
+    type: string
+    description: >
+      The git revision of the ansible repository to check out to.
+    default: "master"
+
+
+resources:
+
+  bastion_host:
+    depends_on:
+    - master
+    - slaves
+    type: bastion.yaml
+    properties:
+      image: {get_param: bastion_image}
+      flavor: {get_param: bastion_flavor}
+      key_name: {get_param: ssh_key_name}
+      ssh_user: {get_param: ssh_user}
+      hostname:
+        str_replace:
+          template: "%stackname%-%hostname%"
+          params:
+            '%stackname%': {get_param: 'OS::stack_name'}
+            '%hostname%': {get_param: bastion_hostname}
+      domain_name: {get_param: domain_name}
+      fixed_network: {get_param: fixed_network}
+      fixed_subnet: {get_param: fixed_subnet}
+      ansible_public_key: {get_attr: [ansible_keys, public_key]}
+      ansible_private_key: {get_attr: [ansible_keys, private_key]}
+      floating_ip: {get_attr: [bastion_floating_ip, floating_ip_address]}
+      port: {get_resource: bastion_port}
+      hadoop_ansible_git_url: {get_param: hadoop_ansible_git_url}
+      hadoop_ansible_git_rev: {get_param: hadoop_ansible_git_rev}
+      master_ip: { get_attr: [master, instance_ip] }
+      slave_ips:
+        list_join:
+          - ", "
+          - { get_attr: [slaves, instance_ip] }
+
+  master:
+    type: master.yaml
+    properties:
+      image: {get_param: master_image}
+      flavor: {get_param: master_flavor}
+      key_name: {get_param: ssh_key_name}
+      ssh_user: {get_param: ssh_user}
+      hostname:
+        str_replace:
+          template: "%stackname%-%hostname%"
+          params:
+            '%stackname%': {get_param: 'OS::stack_name'}
+            '%hostname%': {get_param: master_hostname}
+      domain_name: {get_param: domain_name}
+      ansible_public_key: {get_attr: [ansible_keys, public_key]}
+      ip_fwd: {get_attr: [bastion_port, fixed_ips, 0, ip_address]}
+      fixed_network: {get_param: fixed_network}
+      fixed_subnet: {get_param: fixed_subnet}
+
+  slaves:
+    type: OS::Heat::ResourceGroup
+    properties:
+      count: {get_param: slave_count}
+      resource_def:
+        type: slave.yaml
+        properties:
+          image: {get_param: slave_image}
+          flavor: {get_param: slave_flavor}
+          key_name: {get_param: ssh_key_name}
+          ssh_user: {get_param: ssh_user}
+          volume_size: {get_param: slave_volume_size_gb}
+          hostname:
+            str_replace:
+              template: "%stackname%-%hostname%-%index%"
+              params:
+                '%stackname%': {get_param: 'OS::stack_name'}
+                '%hostname%': {get_param: slave_hostname}
+          domain_name: {get_param: domain_name}
+          ansible_public_key: {get_attr: [ansible_keys, public_key]}
+          ip_fwd: {get_attr: [bastion_port, fixed_ips, 0, ip_address]}
+          fixed_network: {get_param: fixed_network}
+          fixed_subnet: {get_param: fixed_subnet}
+          mount_dir: {get_param: mount_dir}
+
+  bastion_port:
+    type: OS::Neutron::Port
+    properties:
+      security_groups:
+      - default
+      network: {get_param: fixed_network}
+      fixed_ips:
+      - subnet_id: {get_param: fixed_subnet}
+      replacement_policy: AUTO
+
+  bastion_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: {get_param: external_network}
+      port_id: {get_resource: bastion_port}
+
+  ansible_keys:
+    type: OS::Nova::KeyPair
+    properties:
+      name:
+        str_replace:
+          template: "ansible_keys_STACK"
+          params:
+            STACK: { get_param: "OS::stack_id" }
+      save_private_key: True
+
+outputs:
+  bation_public_ip:
+    description: Bastion public ip
+    value: {get_attr: [bastion_floating_ip, floating_ip_address]}
+  master_ip:
+    description: Master ip
+    value: {get_attr: [master, instance_ip]}
+  slave_ips:
+    description: Slave ips
+    value: {get_attr: [slaves, instance_ip]}

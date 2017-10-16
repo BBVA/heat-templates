@@ -4,11 +4,12 @@ This project contains some examples of heat templates.
 
 Summary : 
 
-* [scaling](scaling/README.md)
-* [docker-plugin](docker-plugin/README.md)
-* [docker-registry-proxy](docker-registry-proxy/README.md)
-* [docker-openshift-standalone](docker-openshift-standalone/README.md)
-* [k8stack](k8stack/README.md)
+* [scaling](scaling)
+* [docker-plugin](docker-plugin)
+* [docker-registry-proxy](docker-registry-prox)
+* [docker-openshift-standalone](docker-openshift-standalone)
+* [k8stack](k8stack)
+* [hadoop](hadoop)
 
 ## About us
 

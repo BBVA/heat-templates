@@ -1,0 +1,209 @@
+heat_template_version: 2014-10-16
+
+
+description: >
+  A host used for running ansible playbooks and other optional services.
+
+
+parameters:
+
+  key_name:
+    description: >
+      A pre-submitted SSH key to access the VM hosts
+    type: string
+    constraints:
+    - custom_constraint: nova.keypair
+
+  image:
+    description: >
+      Select a base image to use for the bastion server
+    type: string
+    constraints:
+    - custom_constraint: glance.image
+
+  flavor:
+    description: >
+      Define the hardware characteristics for the VMs: CPU, Memory, base disk
+    type: string
+    constraints:
+    - custom_constraint: nova.flavor
+
+  hostname:
+    description: >
+      The Infrastructure hostname portion of the FQDN
+    type: string
+    constraints:
+    - allowed_pattern: '[a-z0-9\-]*'
+      description: Hostname must contain only characters [a-z0-9\-].
+
+  domain_name:
+    description: >
+      All VMs will be placed in this domain
+    type: string
+
+  ssh_user:
+    description: >
+      The user for SSH access to the VM hosts
+    type: string
+
+  fixed_network:
+    description: >
+      The name or ID of the internal network
+    type: string
+    constraints:
+    - custom_constraint: neutron.network
+
+  fixed_subnet:
+    description: >
+      The name or ID of the internal IPv4 space
+    type: string
+    constraints:
+    - custom_constraint: neutron.subnet
+
+  ansible_public_key:
+    description: >
+      The SSH public key that Ansible will use to access master and slave hosts
+      This will be placed on each VM host in /root/.ssh/authorized_keys
+    type: string
+
+  ansible_private_key:
+    description: >
+      The private key that Ansible will use to access master and slave hosts
+      This file will be placed on the bastion host and protected
+    type: string
+
+  floating_ip:
+    description: flosting ip
+    type: string
+
+  port:
+    description: Neutron port (with a floating IP address) to assign to the DNS Nova Server
+    type: string
+
+  timeout:
+    description: Time to wait until the master setup is ready.
+    type: number
+    default: 2000
+
+  hadoop_ansible_git_url:
+    description: >
+      The location of the Hadoop Ansible playbooks
+    type: string
+
+  hadoop_ansible_git_rev:
+    description: >
+      A specific revision of the Ansible playbooks
+    type: string
+
+  master_ip:
+    description: master ip
+    type: string
+  slave_ips:
+    description: slave_ips
+    type: string
+
+resources:
+
+  host:
+    type: OS::Nova::Server
+    properties:
+      name:
+        str_replace:
+          template: "HOST.DOMAIN"
+          params:
+            HOST: {get_param: hostname}
+            DOMAIN: {get_param: domain_name}
+      admin_user: {get_param: ssh_user}
+      image: {get_param: image}
+      flavor: {get_param: flavor}
+      key_name: {get_param: key_name}
+      networks:
+      - port: {get_param: port}
+      user_data_format: SOFTWARE_CONFIG
+      user_data: {get_resource: init}
+
+  init:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+      - config: { get_resource: set_hostname }
+      - config: { get_resource: config_ip_fwd }
+      - config: { get_resource: included_files }
+      - config: { get_resource: bastion-boot }
+
+  # Compose the FQDN for cloud-init
+  set_hostname:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        hostname: {get_param: hostname}
+        fqdn:
+          str_replace:
+            template: "HOST.DOMAIN"
+            params:
+              HOST: {get_param: hostname}
+              DOMAIN: {get_param: domain_name}
+
+  config_ip_fwd:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      group: script
+      config: { get_file: scripts/ip_fwd_gw.sh }
+
+  included_files:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        write_files:
+        - path: /root/.ssh/id_rsa
+          permissions: 0600
+          content: {get_param: ansible_private_key}
+        - path: /root/.ssh/id_rsa.pub
+          permissions: 0600
+          content: {get_param: ansible_public_key}
+        - path: /etc/ansible/ansible.cfg
+          permissions: 0600
+          content:
+            str_replace:
+              template: { get_file: scripts/ansible.cfg }
+              params:
+                '%ssh_user%': { get_param: ssh_user}
+        - path: /tmp/inventory-playbook/templates/inventory.j2
+          permissions: 0600
+          content: {get_file: scripts/inventory-playbook/templates/inventory.j2}
+        - path: /tmp/inventory-playbook/inventory.yaml
+          permissions: 0600
+          content:
+            str_replace:
+              template: { get_file: scripts/inventory-playbook/inventory.yaml }
+              params:
+                '%master%': { get_param: master_ip}
+                '%slaves%': { get_param: slave_ips }
+        ssh_authorized_keys:
+        - {get_param: ansible_public_key}
+
+  bastion-boot:
+    type: OS::Heat::SoftwareConfig
+    properties:
+      config:
+        str_replace:
+          template: { get_file: scripts/bastion-boot.sh}
+          params:
+           '%hadoop_ansible_git_url%': { get_param: hadoop_ansible_git_url }
+           '%hadoop_ansible_git_rev%': { get_param: hadoop_ansible_git_rev }
+           '%wc_notify%': { get_attr: ['wait_handle', 'curl_cli'] }
+
+  wait_condition:
+    type: OS::Heat::WaitCondition
+    properties:
+      handle: { get_resource: wait_handle }
+      timeout: { get_param: timeout }
+
+  wait_handle:
+    type: OS::Heat::WaitConditionHandle
+
+outputs:
+  instance_ip:
+    description: Instance private IP (used by other slaves for ip forwarding).
+    value: {get_attr: [host, first_address]}
+
