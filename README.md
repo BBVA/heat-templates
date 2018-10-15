@@ -6,7 +6,7 @@ Summary :
 
 * [scaling](scaling)
 * [docker-plugin](docker-plugin)
-* [docker-registry-proxy](docker-registry-prox)
+* [docker-registry-proxy](docker-registry-proxy)
 * [docker-openshift-standalone](docker-openshift-standalone)
 * [k8stack](k8stack)
 * [hadoop](hadoop)
